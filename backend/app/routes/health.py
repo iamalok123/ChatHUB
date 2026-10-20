@@ -9,8 +9,9 @@ router = APIRouter(tags=["health"])
 
 
 @router.get("/health")
-def health(request: Request) -> JSONResponse:
+async def health(request: Request) -> JSONResponse:
     settings = request.app.state.settings
+    provider = request.app.state.provider
     db_ok = True
     try:
         conn = request.app.state.database.connect()
@@ -21,12 +22,19 @@ def health(request: Request) -> JSONResponse:
     except Exception:
         db_ok = False
 
+    provider_status = await provider.health()
+    healthy = db_ok and (
+        settings.effective_llm_mode == "mock" or provider_status.reachable is not False
+    )
+
     body = {
-        "status": "ok" if db_ok else "degraded",
+        "status": "ok" if healthy else "degraded",
         "version": __version__,
         "llm_mode": settings.effective_llm_mode,
+        "provider": provider_status.to_dict(),
         "gemini": {
             "configured": bool(settings.gemini_api_key),
+            "reachable": provider_status.reachable,
             "chat_model": settings.gemini_chat_model,
             "embed_model": settings.gemini_embed_model,
         },

@@ -7,6 +7,8 @@ def test_health_is_public_and_reports_mock_mode(client):
     body = response.json()
     assert body["status"] == "ok"
     assert body["llm_mode"] == "mock"
+    assert body["provider"]["name"] == "mock"
+    assert body["provider"]["mock"] is True
     assert body["gemini"]["configured"] is False
     assert "api_key" not in body
     assert "key" not in {key.lower() for key in body}

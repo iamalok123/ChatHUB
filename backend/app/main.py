@@ -13,6 +13,7 @@ from app.auth.sessions import purge_expired
 from app.config import REQUEST_HEADER, Settings
 from app.db import Database
 from app.errors import install_error_handlers
+from app.llm import build_provider
 from app.routes import auth, health, spaces
 
 logger = logging.getLogger("branchmind")
@@ -30,6 +31,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
 
     database = Database(settings.db_path)
+    provider = build_provider(settings)
 
     @asynccontextmanager
     async def lifespan(_: FastAPI):
@@ -45,7 +47,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             settings.app_host,
             settings.backend_port,
         )
-        yield
+        try:
+            yield
+        finally:
+            await provider.close()
 
     app = FastAPI(
         title="BranchMind",
@@ -58,6 +63,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app.state.settings = settings
     app.state.database = database
+    app.state.provider = provider
     app.state.signup_limiter = SlidingWindowLimiter(limit=5, window_seconds=600)
     app.state.login_limiter = SlidingWindowLimiter(limit=10, window_seconds=300)
 
