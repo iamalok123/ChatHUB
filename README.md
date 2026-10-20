@@ -48,11 +48,14 @@ npm --prefix frontend run dev
 - Create an account, sign in, restore a session, update the profile or password, and sign out.
 - Switch between light, dark, and system themes without a flash on reload.
 - Browse spaces and the branch tree, filter branches, inspect inherited messages, and view effective and excluded memories.
+- Send messages with `Ctrl/Cmd+Enter`, watch streamed markdown with syntax highlighting, stop an interrupted reply, and revisit the transcript without losing your scroll position.
+- Expand the reasoning pill to see retrieved memories, live steps, thinking or a labelled context summary, and open the full Why trace with retrieval scores and context composition.
+- Copy answers and code blocks and identify inherited messages by their origin branch color.
 - Export a space to JSON or import an export as a new owned space.
 - Use the responsive shell: the sidebar is a drawer below 900px and the inspector is a drawer below 1280px.
 - See the mock/live provider state and a privacy explanation in Settings. Mock mode is labelled throughout.
 
-The chat composer, memory editing, fork/merge dialogs, and the full Why trace are the next UI phase. The backend operations already exist.
+Memory editing, the fork/merge dialogs, graph navigation, and the compare view are the next UI phases. Their backend operations already exist.
 
 ## Verify
 
@@ -76,4 +79,4 @@ npm --prefix frontend run build
 
 Phases 0-6 establish the toolchain, database, authentication boundary, branch visibility, Gemini/mock providers, streaming branch chat, traces, regenerate-as-new-branch, the memory engine, the Git-like operations (fork, upward-only merge, sync, diff, checkpoints, export/import), and the authenticated frontend shell with settings and responsive memory inspection.
 
-Phase 7 adds the streaming chat experience, markdown rendering, reasoning steps, and message actions.
+Phase 7 adds the streaming chat experience: markdown rendering with highlighted code, optimistic sends and interrupted-reply recovery, a reasoning pill with steps and thinking summaries, inherited-message styling, copy actions, sticky auto-scroll, and the full Why inspector with retrieval score breakdowns, context composition, and usage.

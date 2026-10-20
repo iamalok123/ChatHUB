@@ -159,3 +159,27 @@ This file records decisions and deviations from the original local-only, Ollama-
 **Reason:** Export/import is already part of the backend contract and completes the settings surface without implying an unimplemented action works.
 
 **Consequences:** Imported spaces become owned by the current user and appear in the space picker after the import response. The UI reports the imported branch, message, and memory counts from the backend.
+
+## D-024: Compact trace summaries travel with messages
+
+**Decision:** `GET /branches/{id}/messages` includes a `trace_summary` for messages with stored traces: provider, mock flag, duration, retrieved-memory count, thinking source and summary, usage, and status. The full ranked trace remains lazy-loaded from the trace endpoint.
+
+**Reason:** The reasoning pill and inherited replies need duration and memory counts without issuing one extra request per assistant message. Embedding the full trace would inflate the transcript payload and duplicate the Why API.
+
+**Consequences:** The summary is derived from the persisted trace each time messages are listed. Full score breakdowns, considered memories, operations, and warnings still come from the trace endpoint when the inspector opens.
+
+## D-025: Streamed chat is optimistic and rAF-batched
+
+**Decision:** Sending a message appends an optimistic user turn, sends the current `expected_head_id`, and streams into a separate live reply. Tokens are buffered and applied once per animation frame. On completion or interruption, the transcript is refetched, the live reply is cleared, and the branch counts refresh.
+
+**Reason:** Optimistic feedback keeps the composer responsive, head checking prevents silently forking on a stale view, and animation-frame batching avoids a render for every token. Refetching after the stream reconciles persisted ids and statuses rather than trusting temporary ids.
+
+**Consequences:** The Stop action aborts the request, waits briefly for the backend to persist the partial reply, then reloads the transcript. Manual scrolling disables auto-follow until the user returns to the bottom.
+
+## D-026: Trace selection is shared through a small store
+
+**Decision:** Message actions write a `{branchId, commitId}` target to a trace store and switch the inspector to Why. The Inspector tab itself moved into the UI store, while trace contents are fetched by the Why panel.
+
+**Reason:** The chat and inspector are separate layout branches, so a local callback would need prop plumbing through the shell. A two-field store keeps the cross-panel action explicit and resets cleanly when the branch changes.
+
+**Consequences:** Switching branches clears the selected trace and returns the inspector to Memory. The Why panel remains empty until an assistant reply is selected.

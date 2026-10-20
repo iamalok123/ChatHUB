@@ -5,7 +5,13 @@ import sqlite3
 
 from app.llm.base import LLMProvider
 from app.llm.embeddings import from_blob, is_stale_embedding
-from app.models import BranchOut, MemoryOut, MessageOut, ProposalOut
+from app.models import (
+    BranchOut,
+    MemoryOut,
+    MessageOut,
+    MessageTraceSummary,
+    ProposalOut,
+)
 from app.repo import commits as commits_repo
 from app.visibility import effective_memories, visible_commit_chain
 
@@ -34,6 +40,35 @@ def branch_out(conn: sqlite3.Connection, branch: sqlite3.Row) -> BranchOut:
     )
 
 
+def _message_trace_summary(raw: str | None) -> MessageTraceSummary | None:
+    trace, version = parse_trace(raw)
+    if trace is None:
+        return None
+    retrieved = trace.get("retrieved_memories")
+    memories = retrieved if isinstance(retrieved, list) else []
+    context = trace.get("context")
+    context_count = context.get("memory_count", 0) if isinstance(context, dict) else 0
+    duration = trace.get("generate_ms", trace.get("duration_ms", 0))
+    usage = trace.get("usage")
+    return MessageTraceSummary(
+        version=version,
+        provider=trace.get("provider"),
+        mock=bool(trace.get("mock")),
+        duration_ms=(
+            int(duration) if isinstance(duration, (int, float)) else 0
+        ),
+        memory_count=(
+            len(memories)
+            if memories
+            else int(context_count) if isinstance(context_count, (int, float)) else 0
+        ),
+        thinking_summary=trace.get("thinking_summary"),
+        thinking_source=trace.get("thinking_source"),
+        usage=usage if isinstance(usage, dict) else {},
+        status=trace.get("status"),
+    )
+
+
 def message_out(
     conn: sqlite3.Connection, branch: sqlite3.Row, commit: sqlite3.Row
 ) -> MessageOut:
@@ -50,6 +85,7 @@ def message_out(
         is_inherited=commit["branch_id"] != branch["id"],
         status=commit["status"] or "complete",
         created_at=commit["created_at"],
+        trace_summary=_message_trace_summary(commit["trace_json"]),
     )
 
 

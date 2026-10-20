@@ -2,6 +2,7 @@ import { create } from 'zustand'
 
 export type Theme = 'light' | 'dark' | 'system'
 export type ToastKind = 'info' | 'success' | 'error'
+export type InspectorTab = 'memory' | 'why' | 'graph' | 'settings'
 
 export type Toast = {
   id: string
@@ -57,12 +58,14 @@ type UiState = {
   theme: Theme
   sidebarOpen: boolean
   inspectorOpen: boolean
+  inspectorTab: InspectorTab
   settingsOpen: boolean
   newSpaceOpen: boolean
   toasts: Toast[]
   setTheme: (theme: Theme) => void
   setSidebarOpen: (open: boolean) => void
   setInspectorOpen: (open: boolean) => void
+  setInspectorTab: (tab: InspectorTab) => void
   setSettingsOpen: (open: boolean) => void
   setNewSpaceOpen: (open: boolean) => void
   pushToast: (kind: ToastKind, title: string, description?: string) => string
@@ -73,6 +76,7 @@ export const useUiStore = create<UiState>()((set, get) => ({
   theme: readTheme(),
   sidebarOpen: false,
   inspectorOpen: true,
+  inspectorTab: 'memory',
   settingsOpen: false,
   newSpaceOpen: false,
   toasts: [],
@@ -82,6 +86,7 @@ export const useUiStore = create<UiState>()((set, get) => ({
   },
   setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
   setInspectorOpen: (inspectorOpen) => set({ inspectorOpen }),
+  setInspectorTab: (inspectorTab) => set({ inspectorTab }),
   setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
   setNewSpaceOpen: (newSpaceOpen) => set({ newSpaceOpen }),
   pushToast: (kind, title, description) => {

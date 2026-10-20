@@ -16,6 +16,8 @@ import { api, errorMessage } from '../../api/client'
 import type { Branch, Memory, MemoryList } from '../../api/types'
 import { cn } from '../../lib/cn'
 import { plural, sentenceCase } from '../../lib/format'
+import { useTraceStore } from '../../store/trace'
+import type { InspectorTab } from '../../store/ui'
 import { useUiStore } from '../../store/ui'
 import {
   selectCurrentBranch,
@@ -24,10 +26,9 @@ import {
 } from '../../store/workspace'
 import { IconButton } from '../ui/IconButton'
 import { Spinner } from '../ui/Spinner'
+import { TracePanel } from '../inspector/TracePanel'
 
-type Tab = 'memory' | 'why' | 'graph' | 'settings'
-
-const tabs: Array<{ id: Tab; label: string; icon: typeof Brain }> = [
+const tabs: Array<{ id: InspectorTab; label: string; icon: typeof Brain }> = [
   { id: 'memory', label: 'Memory', icon: Brain },
   { id: 'why', label: 'Why', icon: Lightbulb },
   { id: 'graph', label: 'Graph', icon: Network },
@@ -328,8 +329,10 @@ function SettingsPanel({ branch }: { branch: Branch }) {
 
 export function Inspector({ drawer = false }: { drawer?: boolean }) {
   const branch = useWorkspaceStore(selectCurrentBranch)
-  const [tab, setTab] = useState<Tab>('memory')
+  const tab = useUiStore((state) => state.inspectorTab)
+  const setTab = useUiStore((state) => state.setInspectorTab)
   const setInspectorOpen = useUiStore((state) => state.setInspectorOpen)
+  const traceTarget = useTraceStore((state) => state.target)
 
   if (!branch) return null
 
@@ -394,10 +397,10 @@ export function Inspector({ drawer = false }: { drawer?: boolean }) {
       >
         {tab === 'memory' && <MemoryPanel key={branch.id} branch={branch} />}
         {tab === 'why' && (
-          <EmptyPanel
-            icon={<Lightbulb size={18} aria-hidden />}
-            title="No answer selected"
-            body="Every assistant reply stores a trace. Select one in the chat to see the memories and context behind it."
+          <TracePanel
+            key={`${branch.id}:${traceTarget?.commitId ?? 'none'}`}
+            branch={branch}
+            target={traceTarget}
           />
         )}
         {tab === 'graph' && <GraphPanel branch={branch} />}

@@ -104,11 +104,11 @@ export function AuthScreen() {
         <section className="relative hidden overflow-hidden border-r border-border bg-sidebar px-12 py-10 lg:flex lg:flex-col xl:px-16 xl:py-14">
           <div className="auth-grid absolute inset-0 opacity-55" aria-hidden />
           <div
-            className="absolute -top-40 -left-24 size-[420px] rounded-full bg-accent/10 blur-3xl"
+            className="absolute -top-40 -left-24 size-105 rounded-full bg-accent/10 blur-3xl"
             aria-hidden
           />
           <div
-            className="absolute right-[-120px] bottom-[-160px] size-[360px] rounded-full bg-warning/10 blur-3xl"
+            className="absolute -right-30 -bottom-40 size-90 rounded-full bg-warning/10 blur-3xl"
             aria-hidden
           />
 
@@ -158,12 +158,12 @@ export function AuthScreen() {
             <span className="text-[17px] font-semibold tracking-tight">BranchMind</span>
           </div>
 
-          <div className="m-auto w-full max-w-[420px] animate-fade-in">
+          <div className="m-auto w-full max-w-105 animate-fade-in">
             <div className="mb-7">
               <p className="mb-1.5 text-xs font-medium text-accent">
                 {activeMode === 'login' ? 'Welcome back' : 'Create your local account'}
               </p>
-              <h2 className="text-2xl font-semibold tracking-[-0.025em] text-ink">
+              <h2 className="text-2xl font-semibold tracking-tight text-ink">
                 {activeMode === 'login' ? 'Sign in to your mind' : 'Start a mind of your own'}
               </h2>
               <p className="mt-2 text-sm leading-relaxed text-muted">

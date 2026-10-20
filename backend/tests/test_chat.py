@@ -65,6 +65,12 @@ def test_chat_streams_persists_and_traces(client, app):
     assert messages[1]["status"] == "complete"
     assert messages[1]["is_inherited"] is False
     assert messages[1]["origin_branch_name"] == "main"
+    summary = messages[1]["trace_summary"]
+    assert summary["provider"] == "mock"
+    assert summary["mock"] is True
+    assert summary["memory_count"] == 0
+    assert summary["thinking_source"] == "model"
+    assert summary["duration_ms"] >= 0
 
     branch = client.get(f"/api/branches/{main['id']}").json()
     assert branch["head_commit_id"] == done["assistant_commit_id"]

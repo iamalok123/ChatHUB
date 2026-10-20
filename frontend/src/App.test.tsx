@@ -4,6 +4,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
 import App from './App'
 import { useAuthStore } from './store/auth'
+import { useTraceStore } from './store/trace'
 import { useUiStore } from './store/ui'
 import { useWorkspaceStore } from './store/workspace'
 
@@ -132,10 +133,12 @@ beforeEach(() => {
   window.localStorage.clear()
   document.documentElement.removeAttribute('data-theme')
   useWorkspaceStore.getState().reset()
+  useTraceStore.setState({ target: null })
   useUiStore.setState({
     theme: 'system',
     sidebarOpen: false,
     inspectorOpen: true,
+    inspectorTab: 'memory',
     settingsOpen: false,
     newSpaceOpen: false,
     toasts: [],

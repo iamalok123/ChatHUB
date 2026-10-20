@@ -108,6 +108,18 @@ class ChatRequest(StrictModel):
     expected_head_id: str | None = None
 
 
+class MessageTraceSummary(BaseModel):
+    version: int | None = None
+    provider: str | None = None
+    mock: bool = False
+    duration_ms: int = 0
+    memory_count: int = 0
+    thinking_summary: str | None = None
+    thinking_source: str | None = None
+    usage: dict[str, Any] = Field(default_factory=dict)
+    status: str | None = None
+
+
 class MessageOut(BaseModel):
     id: str
     role: str
@@ -118,6 +130,7 @@ class MessageOut(BaseModel):
     is_inherited: bool
     status: str
     created_at: str
+    trace_summary: MessageTraceSummary | None = None
 
 
 class TraceOut(BaseModel):

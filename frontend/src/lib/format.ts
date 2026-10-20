@@ -14,6 +14,18 @@ export function plural(count: number, singular: string, pluralForm?: string): st
   return `${count} ${count === 1 ? singular : (pluralForm ?? `${singular}s`)}`
 }
 
+export function formatDuration(milliseconds: number): string {
+  if (!Number.isFinite(milliseconds) || milliseconds <= 0) return 'under 100ms'
+  if (milliseconds < 1000) return `${Math.round(milliseconds)}ms`
+  return `${(milliseconds / 1000).toFixed(1)}s`
+}
+
+export function formatTokens(count: number): string {
+  if (!Number.isFinite(count)) return '0'
+  if (count < 1000) return String(Math.round(count))
+  return `${(count / 1000).toFixed(1)}k`
+}
+
 export function slugify(value: string): string {
   return (
     value

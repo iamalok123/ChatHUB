@@ -48,6 +48,7 @@ type WorkspaceState = {
   loadBranches: () => Promise<void>
   selectSpace: (spaceId: string) => Promise<void>
   selectBranch: (branchId: string) => void
+  refreshBranch: (branchId: string) => Promise<void>
   createSpace: (name: string, description: string) => Promise<Space>
   importSpace: (document: unknown) => Promise<ImportResult>
   reset: () => void
@@ -160,6 +161,19 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => ({
     if (!get().branches.some((branch) => branch.id === branchId)) return
     writeStored(BRANCH_KEY, branchId)
     set({ currentBranchId: branchId })
+  },
+
+  refreshBranch: async (branchId) => {
+    const generation = workspaceGeneration
+    try {
+      const branch = await api.get<Branch>(`/branches/${branchId}`)
+      if (generation !== workspaceGeneration) return
+      set((state) => ({
+        branches: state.branches.map((item) => (item.id === branch.id ? branch : item)),
+      }))
+    } catch {
+      return
+    }
   },
 
   createSpace: async (name, description) => {

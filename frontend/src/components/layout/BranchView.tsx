@@ -1,109 +1,115 @@
-import { ArrowUp, Bot, GitBranch, Lock, Sparkles } from 'lucide-react'
+import {
+  ArrowDown,
+  ArrowUp,
+  GitBranch,
+  Lock,
+  RefreshCw,
+  Sparkles,
+  Square,
+  TriangleAlert,
+  X,
+} from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import type { KeyboardEvent } from 'react'
 
-import { api, errorMessage } from '../../api/client'
-import type { Message } from '../../api/types'
+import type { Branch, Space } from '../../api/types'
 import { cn } from '../../lib/cn'
 import { plural, sentenceCase } from '../../lib/format'
-import {
-  selectCurrentBranch,
-  selectCurrentSpace,
-  useWorkspaceStore,
-} from '../../store/workspace'
+import { useTraceStore } from '../../store/trace'
+import { useUiStore } from '../../store/ui'
+import { useWorkspaceStore } from '../../store/workspace'
+import { LiveMessageItem, MessageItem } from '../chat/MessageItem'
+import { useChatStream } from '../chat/useChatStream'
 import { Spinner } from '../ui/Spinner'
 
-function MessageItem({
-  message,
-  color,
-}: {
-  message: Message
-  color?: string | null
-}) {
-  const inherited = message.is_inherited
-  const assistant = message.role === 'assistant'
+function BranchChat({ branch, space }: { branch: Branch; space: Space }) {
+  const branches = useWorkspaceStore((state) => state.branches)
+  const {
+    messages,
+    live,
+    error,
+    loading,
+    streaming,
+    send,
+    stop,
+    reload,
+    clearError,
+  } = useChatStream(branch.id, branch.name, branch.head_commit_id)
 
-  if (!assistant) {
-    return (
-      <div className="flex justify-end">
-        <div
-          className={cn(
-            'max-w-[86%] rounded-2xl rounded-br-md border border-border bg-sidebar px-4 py-3 text-sm leading-relaxed text-ink shadow-soft',
-            inherited && 'border-l-2',
-          )}
-          style={inherited ? { borderLeftColor: color ?? 'var(--color-accent)' } : undefined}
-        >
-          {inherited && (
-            <p className="mb-1 text-[9px] font-medium tracking-wide text-muted uppercase">
-              from {message.origin_branch_name}
-            </p>
-          )}
-          <p className="message-text">{message.content}</p>
-        </div>
-      </div>
-    )
+  const [draft, setDraft] = useState('')
+  const [stick, setStick] = useState(true)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  const branchColors = new Map(branches.map((item) => [item.id, item.color]))
+  const hasContent = Boolean(messages && messages.length > 0) || Boolean(live)
+  const canWrite = !branch.archived && !loading && messages !== null
+
+  useEffect(() => {
+    useTraceStore.getState().clearTrace()
+    useUiStore.getState().setInspectorTab('memory')
+  }, [branch.id])
+
+  useEffect(() => {
+    if (!stick) return
+    const frame = window.requestAnimationFrame(() => {
+      const element = scrollRef.current
+      if (element) element.scrollTop = element.scrollHeight
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [live?.content, live?.thinking, messages, stick])
+
+  const openTrace = (commitId: string) => {
+    useTraceStore.getState().selectTrace({ branchId: branch.id, commitId })
+    useUiStore.getState().setInspectorTab('why')
+    useUiStore.getState().setInspectorOpen(true)
+  }
+
+  const onScroll = () => {
+    const element = scrollRef.current
+    if (!element) return
+    const distance = element.scrollHeight - element.scrollTop - element.clientHeight
+    setStick(distance < 72)
+  }
+
+  const jumpToLatest = () => {
+    setStick(true)
+    const element = scrollRef.current
+    if (element) {
+      element.scrollTo({ top: element.scrollHeight, behavior: 'smooth' })
+    }
+  }
+
+  const resizeComposer = () => {
+    const element = textareaRef.current
+    if (!element) return
+    element.style.height = 'auto'
+    element.style.height = `${Math.min(element.scrollHeight, 160)}px`
+  }
+
+  const submit = async () => {
+    const message = draft.trim()
+    if (!message || streaming || !canWrite) return
+    setStick(true)
+    setDraft('')
+    if (textareaRef.current) textareaRef.current.style.height = 'auto'
+    await send(message)
+  }
+
+  const onComposerKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+      event.preventDefault()
+      void submit()
+    }
   }
 
   return (
-    <div
-      className={cn('flex gap-3', inherited && 'border-l-2 pl-4')}
-      style={inherited ? { borderLeftColor: color ?? 'var(--color-accent)' } : undefined}
-    >
-      <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-lg bg-accent-soft text-accent-ink">
-        <Bot size={15} aria-hidden />
-      </span>
-      <div className="min-w-0 flex-1">
-        <div className="mb-1 flex flex-wrap items-center gap-2 text-[10px] text-muted">
-          <span className="font-medium text-ink">Assistant</span>
-          {inherited && <span>from {message.origin_branch_name}</span>}
-          {message.status !== 'complete' && (
-            <span className="rounded-full bg-warning-soft px-1.5 py-0.5 text-[9px] font-medium text-warning">
-              {sentenceCase(message.status)}
-            </span>
-          )}
-        </div>
-        <div className="message-text font-serif text-[15px] leading-[1.75] text-ink">
-          {message.content}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-export function BranchView() {
-  const space = useWorkspaceStore(selectCurrentSpace)
-  const branch = useWorkspaceStore(selectCurrentBranch)
-  const branches = useWorkspaceStore((state) => state.branches)
-  const [messages, setMessages] = useState<Message[] | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const endRef = useRef<HTMLDivElement>(null)
-  const branchId = branch?.id
-
-  useEffect(() => {
-    if (!branchId) return
-    const controller = new AbortController()
-    api
-      .get<Message[]>(`/branches/${branchId}/messages`, controller.signal)
-      .then((result) => setMessages(result))
-      .catch((caught) => {
-        if (controller.signal.aborted) return
-        setError(errorMessage(caught))
-      })
-    return () => controller.abort()
-  }, [branchId])
-
-  useEffect(() => {
-    if (messages && messages.length > 0) {
-      endRef.current?.scrollIntoView({ block: 'nearest' })
-    }
-  }, [messages])
-
-  if (!branch || !space) return null
-
-  const branchById = new Map(branches.map((item) => [item.id, item.color]))
-
-  return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div
+        ref={scrollRef}
+        onScroll={onScroll}
+        className="relative min-h-0 flex-1 overflow-y-auto"
+      >
         <div className="mx-auto w-full max-w-[760px] px-5 pt-8 pb-6 sm:px-8">
           <div className="mb-7 flex items-center gap-3">
             <span
@@ -137,15 +143,34 @@ export function BranchView() {
             </div>
           )}
 
-          {error ? (
-            <div className="rounded-xl border border-danger/20 bg-danger-soft px-4 py-4 text-xs text-danger">
-              {error}
+          {error && (
+            <div className="mb-5 flex items-start gap-2 rounded-xl border border-danger/20 bg-danger-soft px-3.5 py-2.5 text-[11px] leading-relaxed text-danger">
+              <TriangleAlert size={14} className="mt-0.5 shrink-0" aria-hidden />
+              <span className="min-w-0 flex-1">{error}</span>
+              <button
+                type="button"
+                onClick={() => void reload()}
+                className="inline-flex shrink-0 items-center gap-1 font-medium hover:underline"
+              >
+                <RefreshCw size={11} aria-hidden />
+                Refresh
+              </button>
+              <button
+                type="button"
+                onClick={clearError}
+                aria-label="Dismiss error"
+                className="shrink-0 text-danger/70 hover:text-danger"
+              >
+                <X size={12} aria-hidden />
+              </button>
             </div>
-          ) : messages === null ? (
+          )}
+
+          {loading ? (
             <div className="flex justify-center py-16 text-muted">
               <Spinner className="size-5" />
             </div>
-          ) : messages.length === 0 ? (
+          ) : !hasContent && !error ? (
             <div className="flex flex-col items-center rounded-2xl border border-dashed border-border bg-subtle/35 px-6 py-16 text-center">
               <span className="mb-4 grid size-12 place-items-center rounded-2xl border border-border bg-surface text-accent shadow-soft">
                 <Sparkles size={21} aria-hidden />
@@ -154,12 +179,12 @@ export function BranchView() {
                 This branch is ready
               </h2>
               <p className="mt-2 max-w-sm text-xs leading-relaxed text-muted">
-                Its history and inherited memories are in place. The streaming composer
-                joins in the next build, then every reply will arrive with its own trace.
+                Ask a question or think out loud. Replies stream here with their
+                reasoning, and durable memories are collected for review.
               </p>
               <div className="mt-6 flex flex-wrap justify-center gap-2">
                 <span className="rounded-full border border-border bg-surface px-2.5 py-1 text-[10px] text-muted">
-                  {plural(branch.memory_count, 'memory', 'memories')} inherited
+                  {plural(branch.memory_count, 'memory', 'memories')} available
                 </span>
                 <span className="rounded-full border border-border bg-surface px-2.5 py-1 text-[10px] text-muted">
                   {sentenceCase(branch.thinking_level)} thinking
@@ -169,40 +194,85 @@ export function BranchView() {
                 </span>
               </div>
             </div>
-          ) : (
+          ) : hasContent ? (
             <div className="space-y-7" role="log" aria-label="Conversation messages">
-              {messages.map((message) => (
+              {messages?.map((message) => (
                 <MessageItem
                   key={message.id}
                   message={message}
-                  color={branchById.get(message.branch_id)}
+                  color={branchColors.get(message.branch_id)}
+                  onOpenTrace={openTrace}
                 />
               ))}
-              <div ref={endRef} />
+              {live && <LiveMessageItem live={live} />}
             </div>
-          )}
+          ) : null}
         </div>
+
+        {!stick && hasContent && (
+          <div className="sticky bottom-3 z-10 flex justify-center">
+            <button
+              type="button"
+              onClick={jumpToLatest}
+              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1.5 text-[10px] font-medium text-muted shadow-soft transition-colors hover:text-ink"
+            >
+              <ArrowDown size={11} aria-hidden />
+              Jump to latest
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="shrink-0 px-4 pb-4 sm:px-6">
         <div className="mx-auto w-full max-w-[760px]">
-          <div className="rounded-2xl border border-border bg-surface p-3 opacity-80 shadow-float">
+          <div
+            className={cn(
+              'rounded-2xl border border-border bg-surface p-3 shadow-float transition-opacity',
+              branch.archived && 'opacity-70',
+            )}
+          >
             <div className="flex items-end gap-2">
               <textarea
+                ref={textareaRef}
                 rows={1}
-                disabled
-                placeholder="The chat composer arrives in the next build."
-                aria-label="Chat composer unavailable"
-                className="max-h-32 min-h-[36px] flex-1 resize-none bg-transparent px-1 py-2 text-sm text-ink placeholder:text-muted/70 focus:outline-none disabled:cursor-not-allowed"
+                value={draft}
+                maxLength={8000}
+                disabled={!canWrite}
+                onChange={(event) => {
+                  setDraft(event.target.value)
+                  resizeComposer()
+                }}
+                onKeyDown={onComposerKeyDown}
+                placeholder={
+                  branch.archived
+                    ? 'This branch is archived.'
+                    : 'Ask anything. This branch will remember what matters.'
+                }
+                aria-label="Message this branch"
+                className="max-h-40 min-h-[36px] flex-1 resize-none bg-transparent px-1 py-2 text-sm leading-relaxed text-ink placeholder:text-muted/70 focus:outline-none disabled:cursor-not-allowed"
               />
-              <button
-                type="button"
-                disabled
-                aria-label="Send message"
-                className="grid size-9 shrink-0 place-items-center rounded-xl bg-accent text-white disabled:opacity-40"
-              >
-                <ArrowUp size={17} aria-hidden />
-              </button>
+              {streaming ? (
+                <button
+                  type="button"
+                  onClick={stop}
+                  aria-label="Stop generating"
+                  title="Stop generating"
+                  className="grid size-9 shrink-0 place-items-center rounded-xl border border-border bg-subtle text-ink transition-colors hover:bg-hover"
+                >
+                  <Square size={13} fill="currentColor" aria-hidden />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => void submit()}
+                  disabled={!canWrite || !draft.trim()}
+                  aria-label="Send message"
+                  title="Send message"
+                  className="grid size-9 shrink-0 place-items-center rounded-xl bg-accent text-white transition-colors hover:bg-accent-strong disabled:opacity-35"
+                >
+                  <ArrowUp size={17} aria-hidden />
+                </button>
+              )}
             </div>
             <div className="mt-1 flex items-center justify-between gap-2 border-t border-border/70 px-1 pt-2">
               <div className="flex items-center gap-1.5">
@@ -212,6 +282,11 @@ export function BranchView() {
                 <span className="text-[9px] text-muted">
                   {plural(branch.memory_count, 'memory', 'memories')}
                 </span>
+                {streaming && (
+                  <span className="animate-soft-pulse text-[9px] text-muted">
+                    Generating
+                  </span>
+                )}
               </div>
               <span className="hidden text-[9px] text-muted sm:block">
                 Ctrl / Cmd + Enter to send
@@ -222,4 +297,16 @@ export function BranchView() {
       </div>
     </div>
   )
+}
+
+export function BranchView() {
+  const space = useWorkspaceStore((state) =>
+    state.spaces.find((item) => item.id === state.currentSpaceId),
+  )
+  const branch = useWorkspaceStore((state) =>
+    state.branches.find((item) => item.id === state.currentBranchId),
+  )
+
+  if (!branch || !space) return null
+  return <BranchChat key={branch.id} branch={branch} space={space} />
 }
