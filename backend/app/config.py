@@ -44,7 +44,7 @@ class Settings:
     app_host: str = "127.0.0.1"
     backend_port: int = 8000
     frontend_port: int = 5173
-    db_path: Path = field(default_factory=lambda: ROOT_DIR / "data" / "branchmind.db")
+    db_path: Path = field(default_factory=lambda: BACKEND_DIR / "data" / "chathub.db")
     database_url: str = ""
 
     llm_mode: str = "auto"
@@ -76,8 +76,7 @@ class Settings:
         db_raw = os.getenv("DB_PATH", "./data/chathub.db")
         db_path = Path(db_raw)
         if not db_path.is_absolute():
-            base_dir = ROOT_DIR if (ROOT_DIR / "backend").exists() else BACKEND_DIR
-            db_path = base_dir / db_path
+            db_path = BACKEND_DIR / db_path
         allowed = tuple(
             model.strip()
             for model in os.getenv("GEMINI_ALLOWED_MODELS", ",".join(DEFAULT_ALLOWED_MODELS)).split(

@@ -10,10 +10,7 @@ ChatHUB is structured with complete decoupling between frontend and backend:
 
 ```text
 ChatHUB/
-├── .env.example               # Root unified environment template
 ├── .gitignore                 # Strict ignores for credentials, databases, build artifacts
-├── package.json               # Root single-command convenience runner
-├── run.ps1 / run.cmd / run.sh # Unified single-command launcher with health-check polling
 ├── AGENTS.md                  # Comprehensive engineering contract
 ├── README.md                  # Product manual and architecture guide
 ├── docs/
@@ -22,6 +19,7 @@ ChatHUB/
 │   ├── HARDENING.md           # Security, memory & governance playbook
 │   └── PRODUCTION_TEST_PLAN.md# This document: production testing & deployment plan
 ├── backend/                   # Independent Python 3.12 FastAPI Service
+│   ├── .env                   # Active backend configuration & secrets (git-ignored)
 │   ├── .env.example           # Standalone backend environment template
 │   ├── requirements.txt       # Production dependencies
 │   ├── pyproject.toml         # Python packaging & ruff configuration
@@ -93,42 +91,36 @@ The frontend and backend have separate, explicit environment configurations:
 
 ---
 
-## 3. How to Run Everything with Just ONE Command
+## 3. How to Run Frontend and Backend in Separate Terminals
 
-No need to open separate terminals or launch backend and frontend individually. You can use any of these one-command workflows:
+Because the repository is cleanly decoupled, run backend and frontend in their respective environments:
 
-### Method A: npm (Universal)
+### Terminal 1: FastAPI Backend
 ```powershell
-npm start
+cd backend
+
+# On first run, create virtual environment & install requirements:
+# py -3.12 -m venv .venv
+# .venv\Scripts\pip install -r requirements.txt
+
+.venv\Scripts\python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
-*Or:*
+- Listens on `http://127.0.0.1:8000`
+- Health check: `http://127.0.0.1:8000/api/health`
+- Configuration loaded strictly from `backend/.env`
+
+### Terminal 2: React Frontend UI
 ```powershell
-npm run dev:all
-```
+cd frontend
 
-### Method B: PowerShell Script
-```powershell
-./run.ps1
-```
+# On first run:
+# npm install
 
-### Method C: Windows Command Prompt
-```cmd
-run.cmd
+npm run dev
 ```
-
-### Method D: Linux / macOS / WSL
-```bash
-./run.sh
-```
-
-**What the one-command launcher does automatically:**
-1. Validates or initializes `.env` from `.env.example`.
-2. Sets up Python virtual environment and installs backend dependencies if modified.
-3. Installs frontend dependencies if `node_modules` is absent.
-4. Starts the FastAPI backend on `http://127.0.0.1:8000`.
-5. Polls the `/api/health` endpoint until the backend is fully healthy.
-6. Starts the Vite frontend on `http://127.0.0.1:5173`.
-7. Intercepts `Ctrl+C` to gracefully terminate both frontend and backend processes simultaneously.
+- Available at `http://127.0.0.1:5173`
+- Configuration loaded strictly from `frontend/.env`
+- Automatically proxies `/api` calls to `http://127.0.0.1:8000` via Vite dev proxy
 
 ---
 
@@ -139,16 +131,20 @@ Before pushing to production, execute the 5-stage test verification:
 ### Stage 1: Static Analysis & Linting
 Verifies zero syntax errors, type mismatches, or style violations:
 ```powershell
+# Frontend linting (oxlint)
+cd frontend
 npm run lint
+
+# Backend linting (ruff)
+cd ../backend
+.venv\Scripts\ruff check .
 ```
-*Verifications:*
-- `oxlint`: Scans frontend TypeScript/React files (0 errors).
-- `ruff check backend`: Scans backend Python files (0 errors).
 
 ### Stage 2: Frontend Test Suite (Vitest)
 Executes all 14 isolated test suites:
 ```powershell
-npm run test:frontend
+cd frontend
+npm test
 ```
 *Key test areas covered:*
 1. `App.test.tsx`: Sign-in, sign-up, session persistence, drawer sidebar, logout.
@@ -165,7 +161,8 @@ npm run test:frontend
 ### Stage 3: Backend Test Suite (Pytest)
 Executes all 96 backend tests:
 ```powershell
-npm run test:backend
+cd backend
+.venv\Scripts\pytest tests
 ```
 *Key test areas covered:*
 1. `test_auth.py`: Argon2id password hashing, session cookies, CSRF header requirements.
@@ -187,6 +184,7 @@ npm run test:backend
 
 ### Stage 4: Production Compilation & Bundling
 ```powershell
+cd frontend
 npm run build
 ```
 *Verifications:*

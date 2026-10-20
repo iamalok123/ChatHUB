@@ -23,76 +23,76 @@ The authoritative build contract lives in [AGENTS.md](AGENTS.md). Architecture d
 
 ---
 
-## Quick Start & Simple Commands
+## Quick Start & Developer Commands
 
-### 1. Run Everything (One Command)
-Runs both the FastAPI backend (`http://127.0.0.1:8000`) and the React UI (`http://127.0.0.1:5173`) with health-checking:
+ChatHUB frontend and backend are completely decoupled and run in separate terminals:
 
-* **PowerShell:**
-  ```powershell
-  ./run.ps1
-  ```
-* **Command Prompt:**
-  ```cmd
-  run.cmd
-  ```
-* **npm (from root):**
-  ```powershell
-  npm run dev:all
-  ```
-
-### 2. Run Frontend Only
+### 1. Run Backend (Terminal 1)
 ```powershell
+cd backend
+# On first run, create virtual environment & install requirements:
+# py -3.12 -m venv .venv
+# .venv\Scripts\pip install -r requirements.txt
+.venv\Scripts\python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+Backend will be available at `http://127.0.0.1:8000` (Health check: `http://127.0.0.1:8000/api/health`).
+
+### 2. Run Frontend (Terminal 2)
+```powershell
+cd frontend
+# On first run: npm install
 npm run dev
-# or: cd frontend && npm run dev
 ```
+Frontend UI will be live at `http://127.0.0.1:5173`.
 
-### 3. Run Backend Only
-```powershell
-backend/.venv/Scripts/python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --app-dir backend
-```
+### 3. Run Tests
+- **Frontend Vitest Suites (38 tests):**
+  ```powershell
+  cd frontend
+  npm test
+  ```
+- **Backend Pytest Suites (96 tests):**
+  ```powershell
+  cd backend
+  .venv\Scripts\pytest tests
+  ```
 
 ### 4. Build for Production
-Compiles TypeScript and creates optimized production assets:
 ```powershell
+cd frontend
 npm run build
 ```
 
-### 5. Run All Tests
-Executes both frontend Vitest and backend Pytest test suites:
-```powershell
-npm test
-# Or run individually:
-npm run test:frontend
-npm run test:backend
-```
-
-### 6. Lint & Format
-```powershell
-npm run lint
-```
+### 5. Lint & Format
+- **Frontend:** `cd frontend && npm run lint`
+- **Backend:** `cd backend && .venv\Scripts\ruff check .`
 
 ---
 
-## Organized Project Layout
-
-All test suites are cleanly decoupled into dedicated test folders so production directories stay clean and maintainable:
+## Clean, Decoupled Project Layout
 
 ```
-branchmind/
+ChatHUB/
 ├── AGENTS.md                  # Comprehensive engineering contract
 ├── README.md                  # Complete documentation and user guide
-├── package.json               # Root convenience runner (dev, build, test, lint)
-├── run.ps1 / run.cmd / run.sh # Unified startup scripts
-├── .env.example               # Configuration template
+├── .gitignore                 # Strict ignores for credentials and build artifacts
 ├── docs/
-│   └── DECISIONS.md           # Architecture Decision Records (ADRs)
-├── backend/
+│   ├── AUDIT.md               # Hardening audit register (10/10 fixed & verified)
+│   ├── DECISIONS.md           # Architecture Decision Records (ADRs)
+│   ├── HARDENING.md           # Security, memory & governance playbook
+│   └── PRODUCTION_TEST_PLAN.md# Production testing & deployment matrix
+├── backend/                   # Standalone Python 3.12 FastAPI Service (Render / Railway)
+│   ├── .env                   # Active backend configuration & secrets (git-ignored)
+│   ├── .env.example           # Standalone backend environment template
 │   ├── requirements.txt       # Python dependencies
-│   ├── app/                   # Clean production source code
+│   ├── pyproject.toml         # Packaging & ruff configuration
+│   ├── Procfile               # Container & platform entrypoint
+│   ├── railway.json           # Railway platform blueprint
+│   ├── render.yaml            # Render platform blueprint
+│   ├── app/                   # Clean production source code (zero test clutter)
 │   │   ├── main.py            # App factory, middleware, lifespans
-│   │   ├── config.py          # Typed Pydantic settings
-│   │   ├── db.py / schema.sql # SQLite initialization & schema
+│   │   ├── config.py          # Typed settings loaded from backend/.env
+│   │   ├── db.py / schema.sql # Dual-mode NeonDB PostgreSQL / SQLite fallback
 │   │   ├── visibility.py      # Core R1 ancestor commit & memory isolation
 │   │   ├── auth/              # Passwords, session tokens, dependencies
 │   │   ├── repo/              # Users, spaces, branches, commits, memories
@@ -100,10 +100,13 @@ branchmind/
 │   │   ├── engine/            # Context composer, retrieval, extraction, chat
 │   │   ├── ops/               # Fork, merge, sync, diff, checkpoints, export
 │   │   └── routes/            # Thin REST and SSE route handlers
-│   └── tests/                 # All 71+ backend pytest suites (isolated)
-└── frontend/
+│   └── tests/                 # All 96 backend pytest suites (isolated)
+└── frontend/                  # Standalone Vite + React 19 + TypeScript SPA (Vercel)
+    ├── .env                   # Active frontend configuration (git-ignored)
+    ├── .env.example           # Standalone frontend environment template
     ├── package.json           # Frontend dependencies & scripts
     ├── vite.config.ts         # Vite bundler & Vitest configuration
+    ├── vercel.json            # Vercel deployment & reverse-proxy configuration
     └── src/
         ├── App.tsx            # Root component with auth & routing
         ├── api/               # Typed fetch client, SSE consumer, interfaces
