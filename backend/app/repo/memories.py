@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import sqlite3
+from typing import Any
 
-from app.clock import new_id, utc_now
+from app.engine.memory_service import MemoryService
 
 
 def create(
@@ -20,35 +21,23 @@ def create(
     supersedes_id: str | None = None,
     derived_from_id: str | None = None,
     commit: bool = True,
-) -> sqlite3.Row:
-    memory_id = new_id()
-    conn.execute(
-        """
-        INSERT INTO memories(
-            id, space_id, origin_branch_id, source_commit_id, content, kind, importance,
-            embedding, embedding_model, embedding_dim, supersedes_id, derived_from_id,
-            deleted_at, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)
-        """,
-        (
-            memory_id,
-            space_id,
-            origin_branch_id,
-            source_commit_id,
-            content,
-            kind,
-            importance,
-            embedding,
-            embedding_model,
-            embedding_dim,
-            supersedes_id,
-            derived_from_id,
-            utc_now(),
-        ),
+) -> sqlite3.Row | dict[str, Any]:
+    created = MemoryService.create_memory(
+        conn,
+        space_id=space_id,
+        origin_branch_id=origin_branch_id,
+        source_commit_id=source_commit_id,
+        content=content,
+        kind=kind,
+        importance=importance,
+        embedding=embedding,
+        embedding_model=embedding_model,
+        embedding_dim=embedding_dim,
+        supersedes_id=supersedes_id,
+        derived_from_id=derived_from_id,
+        commit=commit,
     )
-    if commit:
-        conn.commit()
-    row = get(conn, memory_id)
+    row = get(conn, created["id"])
     assert row is not None
     return row
 
@@ -68,35 +57,27 @@ def update(
     embedding_model: str | None,
     embedding_dim: int | None,
 ) -> sqlite3.Row:
-    conn.execute(
-        """
-        UPDATE memories
-        SET content = ?, kind = ?, importance = ?, embedding = ?,
-            embedding_model = ?, embedding_dim = ?
-        WHERE id = ?
-        """,
-        (
-            content,
-            kind,
-            importance,
-            embedding,
-            embedding_model,
-            embedding_dim,
-            memory_id,
-        ),
+    MemoryService.update_memory(
+        conn,
+        memory_id,
+        content=content,
+        kind=kind,
+        importance=importance,
+        embedding=embedding,
+        embedding_model=embedding_model,
+        embedding_dim=embedding_dim,
+        commit=True,
     )
-    conn.commit()
     row = get(conn, memory_id)
     assert row is not None
     return row
 
 
 def soft_delete(conn: sqlite3.Connection, memory_id: str) -> None:
-    conn.execute(
-        "UPDATE memories SET deleted_at = ? WHERE id = ? AND deleted_at IS NULL",
-        (utc_now(), memory_id),
-    )
-    conn.commit()
+    row = get(conn, memory_id)
+    if row is not None:
+        branch_id = row["origin_branch_id"]
+        MemoryService.tombstone_memory(conn, memory_id, branch_id=branch_id, commit=True)
 
 
 def set_override(
@@ -111,46 +92,15 @@ def set_override(
     clear_pinned: bool = False,
     clear_content: bool = False,
 ) -> None:
-    existing = conn.execute(
-        "SELECT * FROM memory_overrides WHERE branch_id = ? AND memory_id = ?",
-        (branch_id, memory_id),
-    ).fetchone()
-    if existing is None:
-        conn.execute(
-            """
-            INSERT INTO memory_overrides(
-                branch_id, memory_id, excluded, pinned, content_override, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?)
-            """,
-            (
-                branch_id,
-                memory_id,
-                excluded,
-                pinned,
-                content_override,
-                utc_now(),
-            ),
-        )
-    else:
-        new_excluded = (
-            None if clear_excluded else (excluded if excluded is not None else existing["excluded"])
-        )
-        new_pinned = (
-            None if clear_pinned else (pinned if pinned is not None else existing["pinned"])
-        )
-        new_content = (
-            None
-            if clear_content
-            else (
-                content_override if content_override is not None else existing["content_override"]
-            )
-        )
-        conn.execute(
-            """
-            UPDATE memory_overrides
-            SET excluded = ?, pinned = ?, content_override = ?, updated_at = ?
-            WHERE branch_id = ? AND memory_id = ?
-            """,
-            (new_excluded, new_pinned, new_content, utc_now(), branch_id, memory_id),
-        )
-    conn.commit()
+    MemoryService.set_override(
+        conn,
+        branch_id,
+        memory_id,
+        excluded=excluded,
+        pinned=pinned,
+        content_override=content_override,
+        clear_excluded=clear_excluded,
+        clear_pinned=clear_pinned,
+        clear_content=clear_content,
+        commit=True,
+    )

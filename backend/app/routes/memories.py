@@ -6,6 +6,7 @@ import sqlite3
 from fastapi import APIRouter, Request, Response
 
 from app.auth.deps import CurrentUser, DbConn
+from app.engine.memory_service import MemoryService
 from app.errors import ApiError, not_found
 from app.llm.base import LLMProvider
 from app.llm.embeddings import to_blob
@@ -234,6 +235,50 @@ def delete_memory(
         )
     memories_repo.soft_delete(conn, memory_id)
     return Response(status_code=204)
+
+
+@router.delete("/memories/{memory_id}/forget", status_code=204)
+def forget_memory(
+    memory_id: str,
+    user: CurrentUser,
+    conn: DbConn,
+    propagate_derived: bool = False,
+) -> Response:
+    mem = memories_repo.get(conn, memory_id)
+    if mem is None:
+        raise not_found()
+    space = conn.execute(
+        "SELECT owner_id FROM spaces WHERE id = ?",
+        (mem["space_id"],),
+    ).fetchone()
+    if space is None or space["owner_id"] != user.id:
+        raise not_found()
+    MemoryService.forget_memory(conn, memory_id, propagate_derived=propagate_derived)
+    return Response(status_code=204)
+
+
+@router.post(
+    "/branches/{branch_id}/memories/{memory_id}/undo",
+    response_model=MemoryOut,
+)
+def undo_memory(
+    branch_id: str,
+    memory_id: str,
+    request: Request,
+    user: CurrentUser,
+    conn: DbConn,
+) -> MemoryOut:
+    branch = _active_branch(conn, branch_id, user.id)
+    row = _visible_memory(conn, branch, memory_id)
+    if row["origin_branch_id"] != branch["id"]:
+        raise ApiError(
+            403,
+            "inherited_memory",
+            "Cannot undo modifications on inherited memory",
+        )
+    restored = MemoryService.undo_memory(conn, memory_id)
+    provider = request.app.state.provider
+    return _serialize(conn, branch, provider, restored)
 
 
 @router.post(
