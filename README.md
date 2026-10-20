@@ -43,13 +43,37 @@ Run the frontend:
 npm --prefix frontend run dev
 ```
 
+## What works today
+
+- Create an account, sign in, restore a session, update the profile or password, and sign out.
+- Switch between light, dark, and system themes without a flash on reload.
+- Browse spaces and the branch tree, filter branches, inspect inherited messages, and view effective and excluded memories.
+- Export a space to JSON or import an export as a new owned space.
+- Use the responsive shell: the sidebar is a drawer below 900px and the inspector is a drawer below 1280px.
+- See the mock/live provider state and a privacy explanation in Settings. Mock mode is labelled throughout.
+
+The chat composer, memory editing, fork/merge dialogs, and the full Why trace are the next UI phase. The backend operations already exist.
+
+## Verify
+
+```powershell
+backend/.venv/Scripts/python -m pytest backend/tests -o addopts="" -q
+backend/.venv/Scripts/python -m ruff check backend/app backend/tests
+npm --prefix frontend run lint
+npm --prefix frontend test
+npm --prefix frontend run build
+```
+
 ## Privacy
 
-- The SQLite database stays on this machine.
+- The SQLite database, sessions, and exports stay on this machine.
 - The backend never exposes the Gemini key to the browser.
 - In live mode, prompt text, selected memories, and extraction context are sent to the Google Gemini API.
-- Mock mode makes no network AI calls.
+- Mock mode makes no network AI calls and requires no API key.
+- Session cookies are HttpOnly and SameSite=Lax; every API route except auth and health requires a session.
 
 ## Status
 
-Phases 0-5 establish the toolchain, database, authentication boundary, branch visibility, Gemini/mock providers, streaming branch chat, traces, regenerate-as-new-branch, the memory engine, and the Git-like operations: fork at any visible commit with memory choices, upward-only merge, upstream sync, diff against an ancestor, checkpoints, and space export/import. The full UI follows in later phases.
+Phases 0-6 establish the toolchain, database, authentication boundary, branch visibility, Gemini/mock providers, streaming branch chat, traces, regenerate-as-new-branch, the memory engine, the Git-like operations (fork, upward-only merge, sync, diff, checkpoints, export/import), and the authenticated frontend shell with settings and responsive memory inspection.
+
+Phase 7 adds the streaming chat experience, markdown rendering, reasoning steps, and message actions.

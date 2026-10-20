@@ -127,3 +127,35 @@ This file records decisions and deviations from the original local-only, Ollama-
 **Reason:** Summary generation is a convenience and must never block an upward merge.
 
 **Consequences:** The response labels `mock`, `provider`, and any fallback warning.
+
+## D-020: Zustand-driven navigation and responsive shell
+
+**Decision:** The frontend uses Zustand stores and localStorage instead of a routing dependency. The selected space and branch persist under `branchmind:space` and `branchmind:branch`. The sidebar becomes a drawer below 900px and the inspector becomes a drawer below 1280px.
+
+**Reason:** The app has one authenticated workspace surface and the build specification does not include a router. This keeps navigation small and makes the active branch available to every panel without URL synchronization.
+
+**Consequences:** There are no shareable deep links yet. Workspace requests carry a generation guard so a logout or user switch cannot apply responses from the previous session.
+
+## D-021: Theme persistence without a flash
+
+**Decision:** Store `light`, `dark`, or `system` under `branchmind-theme`, apply it through `data-theme`, and run a small inline script before React loads. The UI listens for `prefers-color-scheme` changes while the preference is `system`.
+
+**Reason:** A manual toggle must coexist with the OS preference and a dark page must not flash light while the bundle starts.
+
+**Consequences:** CSS tokens remain the single source of colors. The toggle and synchronized `theme-color` metadata follow system changes without a reload.
+
+## D-022: One API client and a reusable SSE reader
+
+**Decision:** All JSON calls go through `src/api/client.ts`, which includes credentials, parses the stable error envelope, and adds `X-BranchMind-Request: 1` to mutations. Streaming calls use `src/api/sse.ts`, which parses named SSE events, comments, multi-line data, CRLF, and trailing blocks.
+
+**Reason:** Authentication failures and mapped backend errors should render consistently, while Phase 7 chat needs one tested parser rather than a second ad hoc implementation.
+
+**Consequences:** Provider failures before the first token surface as `ApiError`. Provider failures after streaming starts remain `error` SSE events handled by the chat caller.
+
+## D-023: Export/import is exposed in Phase 6 settings
+
+**Decision:** The Data settings tab uses the Phase 5 export/import endpoints immediately. Embedding rebuild stays visible but disabled until its endpoint exists.
+
+**Reason:** Export/import is already part of the backend contract and completes the settings surface without implying an unimplemented action works.
+
+**Consequences:** Imported spaces become owned by the current user and appear in the space picker after the import response. The UI reports the imported branch, message, and memory counts from the backend.

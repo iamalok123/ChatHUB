@@ -12,14 +12,29 @@
   --color-ink: #1f1e1d;
   --color-muted: #6b6a65;
   --color-accent: #c96442;
+  --color-accent-strong: #a94e31;
+  --color-accent-ink: #98442b;
   --color-accent-soft: #f6e9e2;
+  --color-hover: #eeece4;
+  --color-subtle: #f7f5ef;
+  --color-danger: #b54435;
+  --color-danger-soft: #f8e7e4;
+  --color-success: #4d7a5a;
+  --color-success-soft: #e8f1ea;
+  --color-warning: #93651f;
+  --color-warning-soft: #f8efdc;
+  --color-overlay: rgb(31 30 29 / 0.42);
 
   --radius-xl: 1rem;
   --radius-2xl: 1.25rem;
+
+  --shadow-soft: 0 1px 2px rgb(31 30 29 / 0.05), 0 1px 1px rgb(31 30 29 / 0.03);
+  --shadow-float:
+    0 24px 64px -20px rgb(31 30 29 / 0.3), 0 8px 24px -12px rgb(31 30 29 / 0.18);
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
     --color-bg: #262624;
     --color-surface: #30302e;
     --color-sidebar: #1f1e1d;
@@ -27,12 +42,53 @@
     --color-ink: #eceae3;
     --color-muted: #a09e96;
     --color-accent: #d97757;
+    --color-accent-strong: #b96145;
+    --color-accent-ink: #ecab94;
     --color-accent-soft: #3a2b25;
+    --color-hover: #2a2a28;
+    --color-subtle: #2b2b29;
+    --color-danger: #e07a6b;
+    --color-danger-soft: #3a2523;
+    --color-success: #84ad91;
+    --color-success-soft: #26342b;
+    --color-warning: #d4a65f;
+    --color-warning-soft: #382f20;
+    --color-overlay: rgb(0 0 0 / 0.58);
+    --shadow-soft: 0 1px 2px rgb(0 0 0 / 0.24);
+    --shadow-float:
+      0 28px 70px -22px rgb(0 0 0 / 0.65), 0 10px 28px -14px rgb(0 0 0 / 0.45);
+    color-scheme: dark;
   }
 }
 
+:root[data-theme='dark'] {
+  --color-bg: #262624;
+  --color-surface: #30302e;
+  --color-sidebar: #1f1e1d;
+  --color-border: #3d3d3a;
+  --color-ink: #eceae3;
+  --color-muted: #a09e96;
+  --color-accent: #d97757;
+  --color-accent-strong: #b96145;
+  --color-accent-ink: #ecab94;
+  --color-accent-soft: #3a2b25;
+  --color-hover: #2a2a28;
+  --color-subtle: #2b2b29;
+  --color-danger: #e07a6b;
+  --color-danger-soft: #3a2523;
+  --color-success: #84ad91;
+  --color-success-soft: #26342b;
+  --color-warning: #d4a65f;
+  --color-warning-soft: #382f20;
+  --color-overlay: rgb(0 0 0 / 0.58);
+  --shadow-soft: 0 1px 2px rgb(0 0 0 / 0.24);
+  --shadow-float:
+    0 28px 70px -22px rgb(0 0 0 / 0.65), 0 10px 28px -14px rgb(0 0 0 / 0.45);
+  color-scheme: dark;
+}
+
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
   font-family: var(--font-sans);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -46,13 +102,135 @@ body,
   min-height: 100%;
 }
 
+html {
+  background: var(--color-bg);
+}
+
 body {
   margin: 0;
   background: var(--color-bg);
   color: var(--color-ink);
 }
 
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--color-accent) 25%, transparent);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background-clip: content-box;
+  background-color: color-mix(in srgb, var(--color-muted) 38%, transparent);
+}
+
 :focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 3px;
+}
+
+.auth-grid {
+  background-image: radial-gradient(
+    circle at 1px 1px,
+    color-mix(in srgb, var(--color-border) 90%, transparent) 1px,
+    transparent 0
+  );
+  background-size: 26px 26px;
+}
+
+.message-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes soft-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 160ms ease-out both;
+}
+
+.animate-dialog-in {
+  animation: dialog-in 180ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.animate-toast-in {
+  animation: toast-in 180ms ease-out both;
+}
+
+.animate-soft-pulse {
+  animation: soft-pulse 1.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

@@ -10,6 +10,14 @@
       content="BranchMind: branching conversations with versioned, inspectable memory."
     />
     <title>BranchMind</title>
+    <script>
+      try {
+        var storedTheme = localStorage.getItem('branchmind-theme')
+        if (storedTheme === 'light' || storedTheme === 'dark') {
+          document.documentElement.dataset.theme = storedTheme
+        }
+      } catch (error) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>
