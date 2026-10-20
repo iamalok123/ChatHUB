@@ -183,3 +183,27 @@ This file records decisions and deviations from the original local-only, Ollama-
 **Reason:** The chat and inspector are separate layout branches, so a local callback would need prop plumbing through the shell. A two-field store keeps the cross-panel action explicit and resets cleanly when the branch changes.
 
 **Consequences:** Switching branches clears the selected trace and returns the inspector to Memory. The Why panel remains empty until an assistant reply is selected.
+
+## D-027: Forks can unpin inherited memories
+
+**Decision:** `POST /branches/{id}/fork` accepts `unpin_memory_ids` in addition to `exclude_memory_ids` and `pin_memory_ids`. The fork dialog tracks which preview memories were already pinned and sends a branch-local `pinned=0` override when the user unpins one.
+
+**Reason:** Pinning is inherited through the branch lineage. Without an explicit unpin choice, turning off a pin in the fork checklist would look successful while the child stayed pinned, breaking the promise that the checklist controls the child's memory behavior.
+
+**Consequences:** The three lists must be disjoint and must reference memories available at the fork commit; contradictory choices return 422 `invalid_memory_choice`. Excluded memories need no unpin override, and inherited upstream rows are never mutated.
+
+## D-028: Branch operations are globally mounted dialogs
+
+**Decision:** Fork, merge, sync, and rename state lives in a small operations store, and `OperationDialogs` mounts the active dialog at the app shell level. Fork and merge previews load on demand; merge and sync submit the expected target head.
+
+**Reason:** Branch actions come from the sidebar, branch header, messages, checkpoints, and the sync banner. A global dialog host avoids duplicating modal state across those surfaces while keeping stale-view conflicts explicit.
+
+**Consequences:** Checkpoint forks reuse the generic fork dialog at the checkpoint commit instead of a separate flow. The merge dialog targets ancestors only, and a successful merge bumps a sync revision so the current child rechecks for newly merged upstream memories.
+
+## D-029: Archiving is reversible and the root is protected
+
+**Decision:** Archive is a PATCH on the existing `archived` flag. Archived branches remain in the sidebar and memory inspector, reject chat and memory mutations with 409 `branch_archived`, and cannot merge or sync. The root branch returns 409 `root_branch_protected` instead of being archived.
+
+**Reason:** Archiving should hide a branch from active work without destroying its history. Removing the root would leave a space with no canonical lineage, so it is never archivable.
+
+**Consequences:** Forking an archived branch remains allowed for inspection and replay. The UI immediate archive action is reversible from the same menu; Settings uses an inline confirmation and still offers restore.

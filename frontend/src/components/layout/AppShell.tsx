@@ -20,6 +20,7 @@ import { Button } from '../ui/Button'
 import { BranchView } from './BranchView'
 import { HealthBanner } from './HealthBanner'
 import { Inspector } from './Inspector'
+import { OperationDialogs } from '../operations/OperationDialogs'
 import { NewSpaceDialog } from './NewSpaceDialog'
 import { SettingsDialog } from './SettingsDialog'
 import { Sidebar } from './Sidebar'
@@ -231,6 +232,7 @@ export function AppShell() {
 
       <NewSpaceDialog />
       <SettingsDialog />
+      <OperationDialogs />
     </div>
   )
 }

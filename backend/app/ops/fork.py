@@ -27,23 +27,29 @@ def _validate_choices(
     memories: list[dict[str, Any]],
     exclude_ids: list[str],
     pin_ids: list[str],
-) -> tuple[set[str], set[str]]:
+    unpin_ids: list[str],
+) -> tuple[set[str], set[str], set[str]]:
     available = {item["id"] for item in memories}
     excluded = set(exclude_ids)
     pinned = set(pin_ids)
-    if not excluded.issubset(available) or not pinned.issubset(available):
+    unpinned = set(unpin_ids)
+    if (
+        not excluded.issubset(available)
+        or not pinned.issubset(available)
+        or not unpinned.issubset(available)
+    ):
         raise ApiError(
             422,
             "invalid_memory_choice",
             "A selected memory is not available at this fork point",
         )
-    if excluded & pinned:
+    if excluded & (pinned | unpinned) or pinned & unpinned:
         raise ApiError(
             422,
             "invalid_memory_choice",
-            "A memory cannot be both excluded and pinned",
+            "A memory cannot be excluded, pinned and unpinned at the same time",
         )
-    return excluded, pinned
+    return excluded, pinned, unpinned
 
 
 def preview_fork(
@@ -79,8 +85,11 @@ def create_fork(
     settings: Settings,
 ) -> sqlite3.Row:
     _commit, memories = _fork_memories(conn, source, commit_id)
-    excluded, pinned = _validate_choices(
-        memories, payload.exclude_memory_ids, payload.pin_memory_ids
+    excluded, pinned, unpinned = _validate_choices(
+        memories,
+        payload.exclude_memory_ids,
+        payload.pin_memory_ids,
+        payload.unpin_memory_ids,
     )
     if payload.model is not None and payload.model not in settings.gemini_allowed_models:
         raise ApiError(
@@ -118,7 +127,7 @@ def create_fork(
             else source["memory_mode"]
         ),
     )
-    if excluded or pinned:
+    if excluded or pinned or unpinned:
         now = utc_now()
         with conn:
             for memory_id in excluded:
@@ -138,6 +147,16 @@ def create_fork(
                         branch_id, memory_id, excluded, pinned,
                         content_override, updated_at
                     ) VALUES (?, ?, NULL, 1, NULL, ?)
+                    """,
+                    (branch["id"], memory_id, now),
+                )
+            for memory_id in unpinned:
+                conn.execute(
+                    """
+                    INSERT INTO memory_overrides(
+                        branch_id, memory_id, excluded, pinned,
+                        content_override, updated_at
+                    ) VALUES (?, ?, NULL, 0, NULL, ?)
                     """,
                     (branch["id"], memory_id, now),
                 )

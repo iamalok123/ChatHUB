@@ -49,6 +49,8 @@ type WorkspaceState = {
   selectSpace: (spaceId: string) => Promise<void>
   selectBranch: (branchId: string) => void
   refreshBranch: (branchId: string) => Promise<void>
+  upsertBranch: (branch: Branch) => void
+  addAndSelectBranch: (branch: Branch) => void
   createSpace: (name: string, description: string) => Promise<Space>
   importSpace: (document: unknown) => Promise<ImportResult>
   reset: () => void
@@ -125,7 +127,6 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => ({
       const branches = await api.get<Branch[]>(`/spaces/${spaceId}/branches`)
       if (generation !== workspaceGeneration) return
       if (request !== branchRequest) return
-      if (request !== branchRequest) return
       const branch = chooseBranch(branches, readStored(BRANCH_KEY))
       set({
         branches,
@@ -174,6 +175,28 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => ({
     } catch {
       return
     }
+  },
+
+  upsertBranch: (branch) => {
+    set((state) => {
+      const exists = state.branches.some((item) => item.id === branch.id)
+      return {
+        branches: exists
+          ? state.branches.map((item) => (item.id === branch.id ? branch : item))
+          : [...state.branches, branch],
+      }
+    })
+  },
+
+  addAndSelectBranch: (branch) => {
+    set((state) => ({
+      branches: state.branches.some((item) => item.id === branch.id)
+        ? state.branches.map((item) => (item.id === branch.id ? branch : item))
+        : [...state.branches, branch],
+      currentBranchId: branch.id,
+    }))
+    writeStored(BRANCH_KEY, branch.id)
+    writeStored(SPACE_KEY, branch.space_id)
   },
 
   createSpace: async (name, description) => {

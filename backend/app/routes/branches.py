@@ -11,7 +11,7 @@ from app.visibility import require_visible_commit, visible_messages
 
 router = APIRouter(tags=["branches"])
 
-NON_NULLABLE_FIELDS = {"name", "thinking_level", "top_k", "memory_mode"}
+NON_NULLABLE_FIELDS = {"name", "thinking_level", "top_k", "memory_mode", "archived"}
 
 
 @router.get("/branches/{branch_id}", response_model=BranchOut)
@@ -32,13 +32,17 @@ def update_branch(
     user: CurrentUser,
     conn: DbConn,
 ) -> BranchOut:
-    branches_repo.require_owned(conn, branch_id, user.id)
+    branch = branches_repo.require_owned(conn, branch_id, user.id)
     values = payload.model_dump(exclude_unset=True)
     for key in NON_NULLABLE_FIELDS:
         if key in values and values[key] is None:
             raise ApiError(
                 422, "invalid_request", f"{key} cannot be null"
             )
+    if "archived" in values and branch["parent_branch_id"] is None:
+        raise ApiError(
+            409, "root_branch_protected", "The root branch cannot be archived"
+        )
     model = values.get("model")
     if model is not None and model not in request.app.state.settings.gemini_allowed_models:
         raise ApiError(

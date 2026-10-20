@@ -270,6 +270,103 @@ export type MemoryList = {
   excluded: Memory[]
 }
 
+export type ForkPreview = {
+  source_branch_id: string
+  commit_id: string
+  commit_role: string
+  memories: Memory[]
+  pinned_count: number
+}
+
+export type ForkInput = {
+  name?: string
+  commit_id?: string
+  persona?: string
+  system_prompt?: string
+  model?: string | null
+  thinking_level?: string
+  top_k?: number
+  memory_mode?: string
+  exclude_memory_ids?: string[]
+  pin_memory_ids?: string[]
+  unpin_memory_ids?: string[]
+}
+
+export type MemoryDuplicate = {
+  memory_id: string
+  duplicate_of_memory_id: string
+  similarity: number
+}
+
+export type MergePreview = {
+  source_branch_id: string
+  target_branch_id: string
+  target_name: string
+  target_head_commit_id: string | null
+  memories: Memory[]
+  duplicates: MemoryDuplicate[]
+  warnings: string[]
+}
+
+export type MergeInput = {
+  target_branch_id: string
+  memory_ids?: string[]
+  summary?: string
+  expected_head_id?: string | null
+}
+
+export type MergeResult = {
+  source_branch_id: string
+  target_branch_id: string
+  merge_commit_id: string
+  copied_count: number
+  duplicates: MemoryDuplicate[]
+  warnings: string[]
+  target: Branch
+}
+
+export type MergeSummary = {
+  summary: string
+  provider: string
+  mock: boolean
+  warning: string | null
+}
+
+export type SyncPreview = {
+  branch_id: string
+  parent_branch_id: string
+  parent_name: string
+  parent_head_commit_id: string | null
+  memories: Memory[]
+  duplicates: MemoryDuplicate[]
+  warnings: string[]
+}
+
+export type SyncInput = {
+  memory_ids: string[]
+  expected_head_id?: string | null
+}
+
+export type SyncResult = {
+  branch_id: string
+  parent_branch_id: string
+  sync_commit_id: string
+  copied_count: number
+  duplicates: MemoryDuplicate[]
+  warnings: string[]
+  branch: Branch
+}
+
+export type Checkpoint = {
+  id: string
+  branch_id: string
+  commit_id: string
+  name: string
+  commit_role: string
+  preview: string
+  created_at: string
+}
+
 export type ImportResult = {
   space: Space
   branch_count: number

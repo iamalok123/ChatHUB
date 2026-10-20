@@ -2,6 +2,8 @@ import {
   ArrowDown,
   ArrowUp,
   GitBranch,
+  GitFork,
+  GitMerge,
   Lock,
   RefreshCw,
   Sparkles,
@@ -15,11 +17,14 @@ import type { KeyboardEvent } from 'react'
 import type { Branch, Space } from '../../api/types'
 import { cn } from '../../lib/cn'
 import { plural, sentenceCase } from '../../lib/format'
+import { useOperationsStore } from '../../store/operations'
 import { useTraceStore } from '../../store/trace'
 import { useUiStore } from '../../store/ui'
 import { useWorkspaceStore } from '../../store/workspace'
 import { LiveMessageItem, MessageItem } from '../chat/MessageItem'
 import { useChatStream } from '../chat/useChatStream'
+import { SyncBanner } from '../operations/SyncBanner'
+import { Button } from '../ui/Button'
 import { Spinner } from '../ui/Spinner'
 
 function BranchChat({ branch, space }: { branch: Branch; space: Space }) {
@@ -36,6 +41,8 @@ function BranchChat({ branch, space }: { branch: Branch; space: Space }) {
     clearError,
   } = useChatStream(branch.id, branch.name, branch.head_commit_id)
 
+  const openFork = useOperationsStore((state) => state.openFork)
+  const openMerge = useOperationsStore((state) => state.openMerge)
   const [draft, setDraft] = useState('')
   const [stick, setStick] = useState(true)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -118,13 +125,13 @@ function BranchChat({ branch, space }: { branch: Branch; space: Space }) {
             >
               <GitBranch size={18} />
             </span>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <h1 className="truncate text-lg font-semibold tracking-tight text-ink">
                   {branch.name}
                 </h1>
                 <span
-                  className="size-2 rounded-full"
+                  className="size-2 shrink-0 rounded-full"
                   style={{ backgroundColor: branch.color ?? 'var(--color-accent)' }}
                   aria-hidden
                 />
@@ -134,6 +141,31 @@ function BranchChat({ branch, space }: { branch: Branch; space: Space }) {
                 {plural(branch.memory_count, 'memory', 'memories')}
               </p>
             </div>
+            <div className="flex shrink-0 items-center gap-1.5">
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={!branch.head_commit_id}
+                onClick={() =>
+                  branch.head_commit_id &&
+                  openFork({ branchId: branch.id, commitId: branch.head_commit_id })
+                }
+                leadingIcon={<GitFork size={12} aria-hidden />}
+              >
+                Fork
+              </Button>
+              {branch.parent_branch_id && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={branch.archived}
+                  onClick={() => openMerge(branch.id)}
+                  leadingIcon={<GitMerge size={12} aria-hidden />}
+                >
+                  Merge up
+                </Button>
+              )}
+            </div>
           </div>
 
           {branch.archived && (
@@ -142,6 +174,8 @@ function BranchChat({ branch, space }: { branch: Branch; space: Space }) {
               This branch is archived. Its history and memory stay available.
             </div>
           )}
+
+          {!branch.archived && <SyncBanner branch={branch} />}
 
           {error && (
             <div className="mb-5 flex items-start gap-2 rounded-xl border border-danger/20 bg-danger-soft px-3.5 py-2.5 text-[11px] leading-relaxed text-danger">
@@ -202,6 +236,9 @@ function BranchChat({ branch, space }: { branch: Branch; space: Space }) {
                   message={message}
                   color={branchColors.get(message.branch_id)}
                   onOpenTrace={openTrace}
+                  onFork={() =>
+                    openFork({ branchId: branch.id, commitId: message.id })
+                  }
                 />
               ))}
               {live && <LiveMessageItem live={live} />}

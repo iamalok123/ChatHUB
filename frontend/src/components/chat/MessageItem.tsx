@@ -1,4 +1,4 @@
-import { Bot, Check, Copy, Lightbulb, TriangleAlert } from 'lucide-react'
+import { Bot, Check, Copy, GitFork, Lightbulb, TriangleAlert } from 'lucide-react'
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 
@@ -15,6 +15,7 @@ type MessageItemProps = {
   message: Message
   color?: string | null
   onOpenTrace: (commitId: string) => void
+  onFork?: () => void
 }
 
 function ActionButton({
@@ -44,11 +45,13 @@ function MessageActions({
   commitId,
   assistant,
   onOpenTrace,
+  onFork,
 }: {
   content: string
   commitId: string
   assistant: boolean
   onOpenTrace: (commitId: string) => void
+  onFork?: () => void
 }) {
   const [copied, setCopied] = useState(false)
 
@@ -63,6 +66,11 @@ function MessageActions({
       <ActionButton label={copied ? 'Copied' : 'Copy message'} onClick={() => void copy()}>
         {copied ? <Check size={13} aria-hidden /> : <Copy size={13} aria-hidden />}
       </ActionButton>
+      {onFork && (
+        <ActionButton label="Fork from here" onClick={onFork}>
+          <GitFork size={13} aria-hidden />
+        </ActionButton>
+      )}
       {assistant && (
         <ActionButton label="Why this answer" onClick={() => onOpenTrace(commitId)}>
           <Lightbulb size={13} aria-hidden />
@@ -72,7 +80,12 @@ function MessageActions({
   )
 }
 
-export function MessageItem({ message, color, onOpenTrace }: MessageItemProps) {
+export function MessageItem({
+  message,
+  color,
+  onOpenTrace,
+  onFork,
+}: MessageItemProps) {
   const inherited = message.is_inherited
   const assistant = message.role === 'assistant'
   const summary = message.trace_summary
@@ -101,6 +114,7 @@ export function MessageItem({ message, color, onOpenTrace }: MessageItemProps) {
           commitId={message.id}
           assistant={false}
           onOpenTrace={onOpenTrace}
+          onFork={onFork}
         />
       </article>
     )
@@ -154,6 +168,7 @@ export function MessageItem({ message, color, onOpenTrace }: MessageItemProps) {
           commitId={message.id}
           assistant
           onOpenTrace={onOpenTrace}
+          onFork={onFork}
         />
       </div>
     </article>

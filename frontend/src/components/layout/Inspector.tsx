@@ -25,6 +25,7 @@ import {
   useWorkspaceStore,
 } from '../../store/workspace'
 import { IconButton } from '../ui/IconButton'
+import { BranchAdminPanel } from '../inspector/BranchAdminPanel'
 import { Spinner } from '../ui/Spinner'
 import { TracePanel } from '../inspector/TracePanel'
 
@@ -319,10 +320,12 @@ function SettingsPanel({ branch }: { branch: Branch }) {
         </div>
       </div>
 
-      <div className="mt-4 flex items-center gap-1.5 rounded-lg bg-subtle px-2.5 py-2 text-[10px] text-muted">
+      <BranchAdminPanel key={branch.id} branch={branch} />
+
+      <p className="mt-4 flex items-center gap-1.5 rounded-lg bg-subtle px-2.5 py-2 text-[10px] text-muted">
         <GitBranch size={12} aria-hidden />
-        Settings editing arrives with the branch workflow.
-      </div>
+        Persona, prompt, and retrieval tuning arrive with personalization.
+      </p>
     </div>
   )
 }

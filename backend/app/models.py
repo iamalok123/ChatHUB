@@ -101,6 +101,7 @@ class BranchUpdate(StrictModel):
     top_k: Annotated[int, Field(ge=1, le=20)] | None = None
     memory_mode: Literal["review", "auto", "off"] | None = None
     color: Annotated[str, StringConstraints(max_length=32)] | None = None
+    archived: bool | None = None
 
 
 class ChatRequest(StrictModel):
@@ -227,6 +228,7 @@ class ForkRequest(StrictModel):
     memory_mode: Literal["review", "auto", "off"] | None = None
     exclude_memory_ids: list[str] = Field(default_factory=list)
     pin_memory_ids: list[str] = Field(default_factory=list)
+    unpin_memory_ids: list[str] = Field(default_factory=list)
 
 
 class ForkPreviewOut(BaseModel):

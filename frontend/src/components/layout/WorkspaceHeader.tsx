@@ -5,6 +5,7 @@ import {
   Settings2,
 } from 'lucide-react'
 
+import { branchLineage } from '../../lib/branchTree'
 import { plural } from '../../lib/format'
 import { useUiStore } from '../../store/ui'
 import {
@@ -13,19 +14,6 @@ import {
   useWorkspaceStore,
 } from '../../store/workspace'
 import { IconButton } from '../ui/IconButton'
-
-function lineage(branchId: string, branches: ReturnType<typeof useWorkspaceStore.getState>['branches']) {
-  const byId = new Map(branches.map((branch) => [branch.id, branch]))
-  const chain = []
-  const seen = new Set<string>()
-  let current = byId.get(branchId)
-  while (current && !seen.has(current.id)) {
-    seen.add(current.id)
-    chain.unshift(current)
-    current = current.parent_branch_id ? byId.get(current.parent_branch_id) : undefined
-  }
-  return chain
-}
 
 export function WorkspaceHeader({ isMobile }: { isMobile: boolean }) {
   const space = useWorkspaceStore(selectCurrentSpace)
@@ -37,7 +25,7 @@ export function WorkspaceHeader({ isMobile }: { isMobile: boolean }) {
   const setInspectorOpen = useUiStore((state) => state.setInspectorOpen)
   const setSettingsOpen = useUiStore((state) => state.setSettingsOpen)
 
-  const chain = branch ? lineage(branch.id, branches) : []
+  const chain = branch ? branchLineage(branches, branch.id) : []
   const ancestors = chain.slice(0, -1)
 
   return (

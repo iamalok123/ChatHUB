@@ -22,6 +22,7 @@ import {
   selectCurrentSpace,
   useWorkspaceStore,
 } from '../../store/workspace'
+import { BranchMenu } from '../operations/BranchMenu'
 import { BrandMark } from '../ui/Brand'
 import { IconButton } from '../ui/IconButton'
 import { ThemeToggle } from '../ui/ThemeToggle'
@@ -158,13 +159,9 @@ function BranchItem({
   onSelect: () => void
 }) {
   return (
-    <button
-      type="button"
-      onClick={onSelect}
-      aria-current={active ? 'page' : undefined}
-      title={`${branch.name} · ${plural(branch.message_count, 'message')} · ${plural(branch.memory_count, 'memory', 'memories')}`}
+    <div
       className={cn(
-        'group relative flex w-full items-center gap-2 rounded-lg py-1.5 pr-2 text-left text-xs transition-colors duration-150',
+        'group relative flex w-full items-center rounded-lg pr-1 text-xs transition-colors duration-150',
         active
           ? 'bg-surface font-medium text-ink shadow-soft ring-1 ring-border'
           : 'text-muted hover:bg-hover hover:text-ink',
@@ -172,25 +169,34 @@ function BranchItem({
       )}
       style={{ paddingLeft: 8 + depth * 14 }}
     >
-      <span
-        className={cn(
-          'size-2 shrink-0 rounded-full transition-transform group-hover:scale-110',
-          active && 'ring-[3px] ring-accent-soft',
+      <button
+        type="button"
+        onClick={onSelect}
+        aria-current={active ? 'page' : undefined}
+        title={`${branch.name} · ${plural(branch.message_count, 'message')} · ${plural(branch.memory_count, 'memory', 'memories')}`}
+        className="flex min-w-0 flex-1 items-center gap-2 py-1.5 text-left"
+      >
+        <span
+          className={cn(
+            'size-2 shrink-0 rounded-full transition-transform group-hover:scale-110',
+            active && 'ring-[3px] ring-accent-soft',
+          )}
+          style={{ backgroundColor: branch.color ?? 'var(--color-accent)' }}
+          aria-hidden
+        />
+        <span className="min-w-0 flex-1 truncate">{branch.name}</span>
+        {branch.archived && <Archive size={11} className="shrink-0" aria-hidden />}
+        {showParent && parentName && (
+          <span className="max-w-[64px] shrink-0 truncate text-[9px] text-muted/75">
+            {parentName}
+          </span>
         )}
-        style={{ backgroundColor: branch.color ?? 'var(--color-accent)' }}
-        aria-hidden
-      />
-      <span className="min-w-0 flex-1 truncate">{branch.name}</span>
-      {branch.archived && <Archive size={11} className="shrink-0" aria-hidden />}
-      {showParent && parentName && (
-        <span className="max-w-[76px] shrink-0 truncate text-[9px] text-muted/75">
-          {parentName}
+        <span className="shrink-0 text-[9px] tabular-nums text-muted/65">
+          {branch.message_count}
         </span>
-      )}
-      <span className="shrink-0 text-[9px] tabular-nums text-muted/65">
-        {branch.message_count}
-      </span>
-    </button>
+      </button>
+      <BranchMenu branch={branch} />
+    </div>
   )
 }
 

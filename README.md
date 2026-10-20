@@ -51,11 +51,14 @@ npm --prefix frontend run dev
 - Send messages with `Ctrl/Cmd+Enter`, watch streamed markdown with syntax highlighting, stop an interrupted reply, and revisit the transcript without losing your scroll position.
 - Expand the reasoning pill to see retrieved memories, live steps, thinking or a labelled context summary, and open the full Why trace with retrieval scores and context composition.
 - Copy answers and code blocks and identify inherited messages by their origin branch color.
+- Fork from any message, a branch head, or a checkpoint with a three-step memory checklist that keeps, excludes, pins, or unpins inherited memories.
+- Merge selected memories upward into an ancestor with an optional generated summary, and sync memories created upstream after a fork.
+- Rename, archive, and restore branches; checkpoint the current head and reopen it as a new branch from Settings.
 - Export a space to JSON or import an export as a new owned space.
 - Use the responsive shell: the sidebar is a drawer below 900px and the inspector is a drawer below 1280px.
 - See the mock/live provider state and a privacy explanation in Settings. Mock mode is labelled throughout.
 
-Memory editing, the fork/merge dialogs, graph navigation, and the compare view are the next UI phases. Their backend operations already exist.
+Memory editing is available in the inspector. Graph navigation and the compare view are the next UI phases; their backend operations already exist.
 
 ## Verify
 
@@ -80,3 +83,5 @@ npm --prefix frontend run build
 Phases 0-6 establish the toolchain, database, authentication boundary, branch visibility, Gemini/mock providers, streaming branch chat, traces, regenerate-as-new-branch, the memory engine, the Git-like operations (fork, upward-only merge, sync, diff, checkpoints, export/import), and the authenticated frontend shell with settings and responsive memory inspection.
 
 Phase 7 adds the streaming chat experience: markdown rendering with highlighted code, optimistic sends and interrupted-reply recovery, a reasoning pill with steps and thinking summaries, inherited-message styling, copy actions, sticky auto-scroll, and the full Why inspector with retrieval score breakdowns, context composition, and usage.
+
+Phase 8 adds the branch workflow: a sidebar tree with per-branch actions, lineage breadcrumbs, three-step forks with keep/exclude/pin/unpin choices, upward-only merge with duplicate warnings and generated summaries, a post-fork sync banner and dialog, checkpoints, and branch rename/archive/restore. Archived branches stay inspectable but reject chat and memory writes; the root branch cannot be archived.

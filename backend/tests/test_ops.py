@@ -111,6 +111,33 @@ def test_fork_preview_and_fork_at_message_with_choices(client: TestClient) -> No
     )
     assert pinned_item["pinned"] is True
     assert pinned_item["inherited"] is True
+
+    unpinned_fork = client.post(
+        f"/api/branches/{pinned_fork.json()['id']}/fork",
+        json={
+            "name": "Unpinned",
+            "unpin_memory_ids": [pinned["id"]],
+        },
+        headers=REQUEST_HEADERS,
+    )
+    assert unpinned_fork.status_code == 201, unpinned_fork.text
+    unpinned_item = next(
+        item
+        for item in _memories(client, unpinned_fork.json()["id"])["memories"]
+        if item["id"] == pinned["id"]
+    )
+    assert unpinned_item["pinned"] is False
+
+    overlap = client.post(
+        f"/api/branches/{main['id']}/fork",
+        json={
+            "name": "Contradictory",
+            "pin_memory_ids": [pinned["id"]],
+            "unpin_memory_ids": [pinned["id"]],
+        },
+        headers=REQUEST_HEADERS,
+    )
+    assert overlap.status_code == 422
     later = _add_memory(client, main["id"], "Created after the fork point")
     assert later["content"] not in _contents(_memories(client, child["id"]))
 
@@ -354,6 +381,68 @@ def test_checkpoints_create_list_and_fork(client: TestClient) -> None:
         headers=REQUEST_HEADERS,
     )
     assert invalid.status_code == 404
+
+
+def test_branch_rename_archive_and_root_protection(client: TestClient) -> None:
+    signup(client)
+    space = create_space(client)
+    main = _main_branch(client, space["id"])
+    child_response = client.post(
+        f"/api/branches/{main['id']}/fork",
+        json={"name": "Feature work"},
+        headers=REQUEST_HEADERS,
+    )
+    assert child_response.status_code == 201, child_response.text
+    child = child_response.json()
+
+    root_archive = client.patch(
+        f"/api/branches/{main['id']}",
+        json={"archived": True},
+        headers=REQUEST_HEADERS,
+    )
+    assert root_archive.status_code == 409
+    assert root_archive.json()["error"]["code"] == "root_branch_protected"
+
+    renamed = client.patch(
+        f"/api/branches/{child['id']}",
+        json={"name": "Renamed feature"},
+        headers=REQUEST_HEADERS,
+    )
+    assert renamed.status_code == 200, renamed.text
+    assert renamed.json()["name"] == "Renamed feature"
+
+    archived = client.patch(
+        f"/api/branches/{child['id']}",
+        json={"archived": True},
+        headers=REQUEST_HEADERS,
+    )
+    assert archived.status_code == 200, archived.text
+    assert archived.json()["archived"] is True
+    listed = client.get(f"/api/spaces/{space['id']}/branches")
+    assert listed.status_code == 200
+    stored = next(branch for branch in listed.json() if branch["id"] == child["id"])
+    assert stored["archived"] is True
+
+    restored = client.patch(
+        f"/api/branches/{child['id']}",
+        json={"archived": False},
+        headers=REQUEST_HEADERS,
+    )
+    assert restored.status_code == 200, restored.text
+    assert restored.json()["archived"] is False
+
+    signup(
+        client,
+        email="grace@example.com",
+        password="another correct horse",
+        display_name="Grace",
+    )
+    foreign = client.patch(
+        f"/api/branches/{child['id']}",
+        json={"name": "Not mine"},
+        headers=REQUEST_HEADERS,
+    )
+    assert foreign.status_code == 404
 
 
 def test_operations_hide_foreign_branches(client: TestClient) -> None:
