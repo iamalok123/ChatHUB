@@ -77,21 +77,17 @@ class Database:
         )
 
     def initialize(self) -> None:
-        if self.is_postgres:
-            conn = self.connect()
-            try:
-                conn.executescript(self._pg_schema)
-                conn.commit()
-            finally:
-                conn.close()
-        else:
+        from app.migrations import apply_migrations
+
+        if not self.is_postgres:
             self.path.parent.mkdir(parents=True, exist_ok=True)
-            conn = self.connect()
-            try:
-                conn.executescript(self._sqlite_schema)
-                conn.commit()
-            finally:
-                conn.close()
+
+        conn = self.connect()
+        try:
+            apply_migrations(conn, is_postgres=self.is_postgres, db_path=self.path)
+            conn.commit()
+        finally:
+            conn.close()
 
     def connect(self) -> sqlite3.Connection | PostgresConnectionWrapper:
         if self.is_postgres:
