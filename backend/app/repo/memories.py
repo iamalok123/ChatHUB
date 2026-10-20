@@ -20,6 +20,10 @@ def create(
     embedding_dim: int | None = None,
     supersedes_id: str | None = None,
     derived_from_id: str | None = None,
+    confidence: float = 1.0,
+    source_type: str = "user_stated",
+    sensitivity: str = "none",
+    subject_key: str | None = None,
     commit: bool = True,
 ) -> sqlite3.Row | dict[str, Any]:
     created = MemoryService.create_memory(
@@ -35,6 +39,10 @@ def create(
         embedding_dim=embedding_dim,
         supersedes_id=supersedes_id,
         derived_from_id=derived_from_id,
+        confidence=confidence,
+        source_type=source_type,
+        sensitivity=sensitivity,
+        subject_key=subject_key,
         commit=commit,
     )
     row = get(conn, created["id"])
@@ -56,6 +64,8 @@ def update(
     embedding: bytes | None,
     embedding_model: str | None,
     embedding_dim: int | None,
+    sensitivity: str | None = None,
+    subject_key: str | None = None,
 ) -> sqlite3.Row:
     MemoryService.update_memory(
         conn,
@@ -66,6 +76,8 @@ def update(
         embedding=embedding,
         embedding_model=embedding_model,
         embedding_dim=embedding_dim,
+        sensitivity=sensitivity,
+        subject_key=subject_key,
         commit=True,
     )
     row = get(conn, memory_id)

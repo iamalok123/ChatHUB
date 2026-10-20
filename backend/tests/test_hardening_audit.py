@@ -70,9 +70,9 @@ def test_memory_poisoning_instruction_rejected(hardening_client: TestClient):
         json={"name": "Poison Space"},
         headers={REQUEST_HEADER: "1"},
     )
-    branch_id = hardening_client.get(
-        f"/api/spaces/{space_res.json()['id']}/branches"
-    ).json()[0]["id"]
+    branch_id = hardening_client.get(f"/api/spaces/{space_res.json()['id']}/branches").json()[0][
+        "id"
+    ]
 
     res = hardening_client.post(
         f"/api/branches/{branch_id}/memories",
@@ -92,9 +92,9 @@ def test_forget_memory_scrubs_all_traces_and_vectors(hardening_client: TestClien
         json={"name": "Forget Space"},
         headers={REQUEST_HEADER: "1"},
     )
-    branch_id = hardening_client.get(
-        f"/api/spaces/{space_res.json()['id']}/branches"
-    ).json()[0]["id"]
+    branch_id = hardening_client.get(f"/api/spaces/{space_res.json()['id']}/branches").json()[0][
+        "id"
+    ]
 
     # Create memory
     mem_res = hardening_client.post(
@@ -133,9 +133,9 @@ def test_canary_secret_never_leaks_to_sibling(hardening_client: TestClient):
         json={"name": "Canary Space"},
         headers={REQUEST_HEADER: "1"},
     )
-    root_branch_id = hardening_client.get(
-        f"/api/spaces/{space_res.json()['id']}/branches"
-    ).json()[0]["id"]
+    root_branch_id = hardening_client.get(f"/api/spaces/{space_res.json()['id']}/branches").json()[
+        0
+    ]["id"]
 
     # Fork branch A from root
     fork_a = hardening_client.post(

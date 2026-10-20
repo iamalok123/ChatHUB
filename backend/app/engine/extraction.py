@@ -10,6 +10,12 @@ import numpy as np
 
 from app.config import Settings
 from app.db import Database
+from app.engine.classifiers import (
+    detect_prompt_injection,
+    detect_secret,
+    detect_sensitivity,
+    infer_subject_key,
+)
 from app.llm.base import LLMProvider, MemoryCandidate
 from app.llm.embeddings import cosine, from_blob, is_stale_embedding, to_blob
 from app.repo import memories as memories_repo
@@ -214,6 +220,8 @@ class MemoryExtractor:
 
                 if mode == "auto":
                     embedding = to_blob(vector) if vector is not None else None
+                    sensitivity = detect_sensitivity(candidate.content)
+                    subject_key = infer_subject_key(candidate.content, candidate.kind)
                     row = memories_repo.create(
                         conn,
                         space_id=branch["space_id"],
@@ -227,6 +235,8 @@ class MemoryExtractor:
                             self.provider.embed_model if embedding is not None else None
                         ),
                         embedding_dim=(self.provider.embed_dim if embedding is not None else None),
+                        sensitivity=sensitivity,
+                        subject_key=subject_key,
                     )
                     comparison.append((dict(row), vector))
                     existing_text.add(candidate.content.strip().lower())
@@ -267,6 +277,8 @@ class MemoryExtractor:
         for candidate in candidates:
             content = str(candidate.content).strip()
             if not content or len(content) > 500:
+                continue
+            if detect_secret(content) or detect_prompt_injection(content):
                 continue
             key = content.lower()
             if key in seen:

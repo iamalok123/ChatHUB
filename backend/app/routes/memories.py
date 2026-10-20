@@ -6,6 +6,12 @@ import sqlite3
 from fastapi import APIRouter, Request, Response
 
 from app.auth.deps import CurrentUser, DbConn
+from app.engine.classifiers import (
+    detect_prompt_injection,
+    detect_secret,
+    detect_sensitivity,
+    infer_subject_key,
+)
 from app.engine.memory_service import MemoryService
 from app.errors import ApiError, not_found
 from app.llm.base import LLMProvider
@@ -157,8 +163,25 @@ async def create_memory(
     source_commit_id = branch["head_commit_id"]
     if not source_commit_id:
         raise ApiError(409, "branch_has_no_head", "The branch has no current head")
+
+    secret_type = detect_secret(payload.content)
+    if secret_type:
+        raise ApiError(
+            400,
+            "secret_detected",
+            f"Memory contains sensitive credentials: {secret_type}",
+        )
+    if detect_prompt_injection(payload.content):
+        raise ApiError(
+            400,
+            "prompt_injection_detected",
+            "Directives or imperative instructions cannot be saved as memories",
+        )
+
     provider = request.app.state.provider
     embedding, model, dim = await _embed(provider, payload.content)
+    sensitivity = detect_sensitivity(payload.content)
+    subject_key = infer_subject_key(payload.content, payload.kind)
     row = memories_repo.create(
         conn,
         space_id=branch["space_id"],
@@ -170,6 +193,8 @@ async def create_memory(
         embedding=embedding,
         embedding_model=model,
         embedding_dim=dim,
+        sensitivity=sensitivity,
+        subject_key=subject_key,
     )
     return _serialize(conn, branch, provider, row)
 
@@ -199,11 +224,29 @@ async def update_memory(
     importance = payload.importance if payload.importance is not None else float(row["importance"])
     provider = request.app.state.provider
     if content != row["content"]:
+        secret_type = detect_secret(content)
+        if secret_type:
+            raise ApiError(
+                400,
+                "secret_detected",
+                f"Memory contains sensitive credentials: {secret_type}",
+            )
+        if detect_prompt_injection(content):
+            raise ApiError(
+                400,
+                "prompt_injection_detected",
+                "Directives or imperative instructions cannot be saved as memories",
+            )
         embedding, model, dim = await _embed(provider, content)
+        sensitivity = detect_sensitivity(content)
+        subject_key = infer_subject_key(content, kind)
     else:
         embedding = row["embedding"]
         model = row["embedding_model"]
         dim = row["embedding_dim"]
+        row_dict = dict(row)
+        sensitivity = row_dict.get("sensitivity", "none")
+        subject_key = row_dict.get("subject_key")
     updated = memories_repo.update(
         conn,
         memory_id,
@@ -213,6 +256,8 @@ async def update_memory(
         embedding=embedding,
         embedding_model=model,
         embedding_dim=dim,
+        sensitivity=sensitivity,
+        subject_key=subject_key,
     )
     item = _effective_item(conn, branch, memory_id) or dict(updated)
     return _serialize(conn, branch, provider, item)

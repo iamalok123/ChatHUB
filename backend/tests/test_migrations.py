@@ -22,9 +22,7 @@ def test_schema_migration_runner(tmp_path: Path):
         # Verify new tables exist
         tables = {
             row[0]
-            for row in conn.execute(
-                "SELECT name FROM sqlite_master WHERE type='table'"
-            ).fetchall()
+            for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
         }
         expected_tables = {
             "users",
@@ -49,10 +47,7 @@ def test_schema_migration_runner(tmp_path: Path):
             assert table in tables, f"Expected table '{table}' to exist"
 
         # Verify new columns on memories
-        columns = {
-            row[1]
-            for row in conn.execute("PRAGMA table_info(memories)").fetchall()
-        }
+        columns = {row[1] for row in conn.execute("PRAGMA table_info(memories)").fetchall()}
         expected_columns = {
             "version",
             "status",

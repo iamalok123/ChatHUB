@@ -108,13 +108,15 @@ class MemoryService:
             (
                 new_id(),
                 mem_id,
-                json.dumps({
-                    "id": mem_id,
-                    "space_id": space_id,
-                    "branch_id": origin_branch_id,
-                    "content": content,
-                    "kind": kind,
-                }),
+                json.dumps(
+                    {
+                        "id": mem_id,
+                        "space_id": space_id,
+                        "branch_id": origin_branch_id,
+                        "content": content,
+                        "kind": kind,
+                    }
+                ),
                 now,
             ),
         )
@@ -157,9 +159,7 @@ class MemoryService:
         new_kind = kind if kind is not None else existing["kind"]
         new_importance = importance if importance is not None else existing["importance"]
         new_confidence = confidence if confidence is not None else existing.get("confidence", 1.0)
-        new_sens = (
-            sensitivity if sensitivity is not None else existing.get("sensitivity", "none")
-        )
+        new_sens = sensitivity if sensitivity is not None else existing.get("sensitivity", "none")
         new_subject_key = subject_key if subject_key is not None else existing.get("subject_key")
         new_hash = content_hash(new_content)
         now = utc_now()
@@ -225,13 +225,15 @@ class MemoryService:
             (
                 new_id(),
                 memory_id,
-                json.dumps({
-                    "id": memory_id,
-                    "space_id": existing["space_id"],
-                    "branch_id": existing["origin_branch_id"],
-                    "content": new_content,
-                    "kind": new_kind,
-                }),
+                json.dumps(
+                    {
+                        "id": memory_id,
+                        "space_id": existing["space_id"],
+                        "branch_id": existing["origin_branch_id"],
+                        "content": new_content,
+                        "kind": new_kind,
+                    }
+                ),
                 now,
             ),
         )
@@ -393,9 +395,7 @@ class MemoryService:
                 else (excluded if excluded is not None else existing["excluded"])
             )
             new_pin = (
-                None
-                if clear_pinned
-                else (pinned if pinned is not None else existing["pinned"])
+                None if clear_pinned else (pinned if pinned is not None else existing["pinned"])
             )
             new_cnt = (
                 None
