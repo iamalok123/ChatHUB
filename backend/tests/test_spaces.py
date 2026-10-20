@@ -67,14 +67,15 @@ def test_cross_user_space_access_is_404(client):
 
     assert client.get(f"/api/spaces/{space['id']}").status_code == 404
     assert client.get(f"/api/spaces/{space['id']}/branches").status_code == 404
-    assert client.patch(
-        f"/api/spaces/{space['id']}",
-        json={"name": "Stolen"},
-        headers=REQUEST_HEADERS,
-    ).status_code == 404
-    assert client.delete(
-        f"/api/spaces/{space['id']}", headers=REQUEST_HEADERS
-    ).status_code == 404
+    assert (
+        client.patch(
+            f"/api/spaces/{space['id']}",
+            json={"name": "Stolen"},
+            headers=REQUEST_HEADERS,
+        ).status_code
+        == 404
+    )
+    assert client.delete(f"/api/spaces/{space['id']}", headers=REQUEST_HEADERS).status_code == 404
     assert client.get("/api/spaces").json() == []
 
 
@@ -88,20 +89,24 @@ def test_space_delete_cascades(client, app):
 
     conn: sqlite3.Connection = app.state.database.connect()
     try:
-        assert conn.execute(
-            "SELECT COUNT(*) FROM branches WHERE id = ?", (branch["id"],)
-        ).fetchone()[0] == 0
-        assert conn.execute(
-            "SELECT COUNT(*) FROM commits WHERE branch_id = ?", (branch["id"],)
-        ).fetchone()[0] == 0
+        assert (
+            conn.execute("SELECT COUNT(*) FROM branches WHERE id = ?", (branch["id"],)).fetchone()[
+                0
+            ]
+            == 0
+        )
+        assert (
+            conn.execute(
+                "SELECT COUNT(*) FROM commits WHERE branch_id = ?", (branch["id"],)
+            ).fetchone()[0]
+            == 0
+        )
     finally:
         conn.close()
 
 
 def test_invalid_space_name_is_422(client):
     signup(client)
-    response = client.post(
-        "/api/spaces", json={"name": "   "}, headers=REQUEST_HEADERS
-    )
+    response = client.post("/api/spaces", json={"name": "   "}, headers=REQUEST_HEADERS)
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "invalid_request"

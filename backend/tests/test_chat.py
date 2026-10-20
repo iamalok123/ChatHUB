@@ -46,9 +46,7 @@ def test_chat_streams_persists_and_traces(client, app):
     assert "error" not in names
     assert names.count("step") >= 4
 
-    tokens = "".join(
-        event["data"]["text"] for event in events if event["event"] == "token"
-    )
+    tokens = "".join(event["data"]["text"] for event in events if event["event"] == "token")
     assert tokens.startswith("[Mock mode]")
     done = next(event["data"] for event in events if event["event"] == "done")
     assert done["status"] == "complete"
@@ -101,9 +99,7 @@ def test_second_chat_uses_the_first_turn_as_history(client):
 
     first_status, first_events = stream_chat(client, main["id"], "First question")
     assert first_status == 200
-    first_done = next(
-        event["data"] for event in first_events if event["event"] == "done"
-    )
+    first_done = next(event["data"] for event in first_events if event["event"] == "done")
 
     second_status, second_events = stream_chat(
         client,
@@ -112,9 +108,7 @@ def test_second_chat_uses_the_first_turn_as_history(client):
         expected_head_id=first_done["assistant_commit_id"],
     )
     assert second_status == 200
-    second_done = next(
-        event["data"] for event in second_events if event["event"] == "done"
-    )
+    second_done = next(event["data"] for event in second_events if event["event"] == "done")
     assert second_done["user_commit_id"] != first_done["user_commit_id"]
 
     messages = client.get(f"/api/branches/{main['id']}/messages").json()
@@ -138,9 +132,7 @@ def test_chat_rejects_stale_head_without_persisting(client, app):
     space = create_space(client)
     main = main_branch(client, space["id"])
 
-    status, events = stream_chat(
-        client, main["id"], "Never saved", expected_head_id="stale-head"
-    )
+    status, events = stream_chat(client, main["id"], "Never saved", expected_head_id="stale-head")
     assert status == 409
     assert events == []
     error = client.post(
@@ -181,25 +173,19 @@ def test_sibling_chat_and_traces_are_isolated(client, app):
     status, events = stream_chat(client, main["id"], "Shared opening")
     assert status == 200
     main_assistant = next(
-        event["data"]["assistant_commit_id"]
-        for event in events
-        if event["event"] == "done"
+        event["data"]["assistant_commit_id"] for event in events if event["event"] == "done"
     )
 
     conn = connect(app)
     try:
-        child = fork(
-            conn, main["id"], main_assistant, "Child"
-        )
+        child = fork(conn, main["id"], main_assistant, "Child")
     finally:
         conn.close()
 
     status, events = stream_chat(client, child["id"], "Only on the child")
     assert status == 200
     child_assistant = next(
-        event["data"]["assistant_commit_id"]
-        for event in events
-        if event["event"] == "done"
+        event["data"]["assistant_commit_id"] for event in events if event["event"] == "done"
     )
 
     child_messages = client.get(f"/api/branches/{child['id']}/messages").json()
@@ -209,17 +195,11 @@ def test_sibling_chat_and_traces_are_isolated(client, app):
     assert child_messages[0]["is_inherited"] is True
     assert child_messages[0]["origin_branch_name"] == "main"
     assert child_messages[2]["is_inherited"] is False
-    assert "Only on the child" not in {
-        message["content"] for message in main_messages
-    }
+    assert "Only on the child" not in {message["content"] for message in main_messages}
 
-    inherited_trace = client.get(
-        f"/api/branches/{child['id']}/messages/{main_assistant}/trace"
-    )
+    inherited_trace = client.get(f"/api/branches/{child['id']}/messages/{main_assistant}/trace")
     assert inherited_trace.status_code == 200
-    hidden_trace = client.get(
-        f"/api/branches/{main['id']}/messages/{child_assistant}/trace"
-    )
+    hidden_trace = client.get(f"/api/branches/{main['id']}/messages/{child_assistant}/trace")
     assert hidden_trace.status_code == 404
 
 
@@ -240,9 +220,7 @@ def test_regenerate_creates_sibling_without_copying_user_message(client, app):
     assert branch_event["fork_commit_id"] == user_message["id"]
     assert branch_event["parent_branch_id"] == main["id"]
 
-    tokens = "".join(
-        event["data"]["text"] for event in events if event["event"] == "token"
-    )
+    tokens = "".join(event["data"]["text"] for event in events if event["event"] == "token")
     done = next(event["data"] for event in events if event["event"] == "done")
     assert tokens.startswith("[Mock mode]")
     assert done["status"] == "complete"
@@ -306,9 +284,7 @@ async def test_closing_stream_persists_partial_reply(client, app):
     conn = connect(app)
     try:
         branch = branches.require_owned(conn, main["id"], user.id)
-        space_row = conn.execute(
-            "SELECT * FROM spaces WHERE id = ?", (space["id"],)
-        ).fetchone()
+        space_row = conn.execute("SELECT * FROM spaces WHERE id = ?", (space["id"],)).fetchone()
         assert space_row is not None
         history = visible_messages(conn, branch)
         user_commit = commits.append_at_head(
@@ -382,9 +358,7 @@ def test_branch_settings_and_archive_rules(client, app):
     space = create_space(client)
     main = main_branch(client, space["id"])
 
-    root_delete = client.delete(
-        f"/api/branches/{main['id']}", headers=REQUEST_HEADERS
-    )
+    root_delete = client.delete(f"/api/branches/{main['id']}", headers=REQUEST_HEADERS)
     assert root_delete.status_code == 409
     assert root_delete.json()["error"]["code"] == "root_branch_protected"
 
@@ -418,9 +392,7 @@ def test_branch_settings_and_archive_rules(client, app):
     )
     assert invalid_model.status_code == 422
 
-    archived = client.delete(
-        f"/api/branches/{child['id']}", headers=REQUEST_HEADERS
-    )
+    archived = client.delete(f"/api/branches/{child['id']}", headers=REQUEST_HEADERS)
     assert archived.status_code == 204
     child_after = client.get(f"/api/branches/{child['id']}").json()
     assert child_after["archived"] is True
@@ -431,8 +403,6 @@ def test_branch_settings_and_archive_rules(client, app):
     )
     assert blocked_chat.status_code == 409
 
-    deleted = client.delete(
-        f"/api/branches/{grandchild['id']}", headers=REQUEST_HEADERS
-    )
+    deleted = client.delete(f"/api/branches/{grandchild['id']}", headers=REQUEST_HEADERS)
     assert deleted.status_code == 204
     assert client.get(f"/api/branches/{grandchild['id']}").status_code == 404

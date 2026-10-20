@@ -5,6 +5,7 @@ import {
   Monitor,
   Moon,
   Palette,
+  Play,
   RefreshCw,
   ShieldCheck,
   Sparkles,
@@ -417,11 +418,30 @@ function AppearanceSettings() {
 function DataSettings() {
   const space = useWorkspaceStore(selectCurrentSpace)
   const importSpace = useWorkspaceStore((state) => state.importSpace)
+  const createDemo = useWorkspaceStore((state) => state.createDemo)
   const pushToast = useUiStore((state) => state.pushToast)
   const [exportPending, setExportPending] = useState(false)
   const [importPending, setImportPending] = useState(false)
+  const [demoPending, setDemoPending] = useState(false)
   const [dataError, setDataError] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+
+  const loadDemo = async () => {
+    setDemoPending(true)
+    setDataError(null)
+    try {
+      await createDemo()
+      pushToast(
+        'success',
+        'Demo space loaded',
+        'Three branches, five memories, one merge, and a pending proposal.',
+      )
+    } catch (caught) {
+      setDataError(errorMessage(caught))
+    } finally {
+      setDemoPending(false)
+    }
+  }
 
   const exportSpace = async () => {
     if (!space) return
@@ -480,6 +500,25 @@ function DataSettings() {
       />
 
       <div className="space-y-3">
+        <div className="flex flex-col gap-3 rounded-xl border border-border bg-subtle/40 p-3.5 sm:flex-row sm:items-center">
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-medium text-ink">Load the guided demo</p>
+            <p className="mt-0.5 text-[10px] leading-relaxed text-muted">
+              A reading-list space with two forks, one merge, a checkpoint, and a
+              pending memory proposal. Seeded locally, no model call.
+            </p>
+          </div>
+          <Button
+            variant="secondary"
+            size="sm"
+            loading={demoPending}
+            onClick={() => void loadDemo()}
+            leadingIcon={!demoPending ? <Play size={13} aria-hidden /> : undefined}
+          >
+            Load demo
+          </Button>
+        </div>
+
         <div className="flex flex-col gap-3 rounded-xl border border-border p-3.5 sm:flex-row sm:items-center">
           <div className="min-w-0 flex-1">
             <p className="text-xs font-medium text-ink">Export current space</p>

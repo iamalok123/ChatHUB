@@ -57,9 +57,7 @@ def signup(
         payload.password,
         settings.session_ttl_days,
     )
-    set_session_cookie(
-        response, token, settings.session_ttl_days * 86400, settings.cookie_secure
-    )
+    set_session_cookie(response, token, settings.session_ttl_days * 86400, settings.cookie_secure)
     return AuthResponse(user=user_out(user))
 
 
@@ -75,9 +73,7 @@ def login(
     user, token = service.login(
         conn, str(payload.email), payload.password, settings.session_ttl_days
     )
-    set_session_cookie(
-        response, token, settings.session_ttl_days * 86400, settings.cookie_secure
-    )
+    set_session_cookie(response, token, settings.session_ttl_days * 86400, settings.cookie_secure)
     return AuthResponse(user=user_out(user))
 
 

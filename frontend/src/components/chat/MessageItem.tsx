@@ -1,5 +1,5 @@
 import { Bot, Check, Copy, GitFork, Lightbulb, TriangleAlert } from 'lucide-react'
-import { useState } from 'react'
+import { memo, useState } from 'react'
 import type { ReactNode } from 'react'
 
 import type { Message } from '../../api/types'
@@ -15,7 +15,7 @@ type MessageItemProps = {
   message: Message
   color?: string | null
   onOpenTrace: (commitId: string) => void
-  onFork?: () => void
+  onFork?: (commitId: string) => void
 }
 
 function ActionButton({
@@ -80,7 +80,7 @@ function MessageActions({
   )
 }
 
-export function MessageItem({
+export const MessageItem = memo(function MessageItem({
   message,
   color,
   onOpenTrace,
@@ -97,7 +97,7 @@ export function MessageItem({
       <article
         id={`message-${message.id}`}
         data-commit-id={message.id}
-        className="group/message flex flex-col items-end"
+        className="message-entry group/message flex flex-col items-end"
       >
         <div
           className={cn(
@@ -118,7 +118,7 @@ export function MessageItem({
           commitId={message.id}
           assistant={false}
           onOpenTrace={onOpenTrace}
-          onFork={onFork}
+          onFork={onFork ? () => onFork(message.id) : undefined}
         />
       </article>
     )
@@ -129,7 +129,7 @@ export function MessageItem({
       id={`message-${message.id}`}
       data-commit-id={message.id}
       className={cn(
-        'group/message flex gap-3',
+        'message-entry group/message flex gap-3',
         inherited && 'border-l-2 pl-4',
       )}
       style={inherited ? { borderLeftColor: color ?? 'var(--color-accent)' } : undefined}
@@ -174,12 +174,12 @@ export function MessageItem({
           commitId={message.id}
           assistant
           onOpenTrace={onOpenTrace}
-          onFork={onFork}
+          onFork={onFork ? () => onFork(message.id) : undefined}
         />
       </div>
     </article>
   )
-}
+})
 
 export function LiveMessageItem({ live }: { live: LiveReply }) {
   const streaming = live.status === 'streaming'

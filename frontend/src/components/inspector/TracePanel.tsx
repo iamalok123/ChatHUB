@@ -182,6 +182,7 @@ function StepRow({ step }: { step: TraceStep }) {
 
 function TraceBody({ trace }: { trace: AssistantTrace }) {
   const synthetic = trace.thinking_source === 'synthetic_context'
+  const demo = trace.demo === true || trace.provider === 'demo'
   const contextSummary = trace.mock || synthetic
   const usage = trace.usage ?? {}
   const retrieved = trace.retrieved_memories ?? []
@@ -208,7 +209,9 @@ function TraceBody({ trace }: { trace: AssistantTrace }) {
             <p className="mt-0.5 text-[9px] text-muted">
               {trace.mock
                 ? 'Mock mode. This is not live Gemini reasoning.'
-                : `${trace.model} · ${sentenceCase(trace.thinking_level)} thinking`}
+                : demo
+                  ? 'Seeded demo transcript. This is not a live model reply.'
+                  : `${trace.model} · ${sentenceCase(trace.thinking_level)} thinking`}
             </p>
           </div>
           <span

@@ -28,9 +28,7 @@ def signup(
 
 
 def create_space(client: TestClient, name: str = "Research") -> dict:
-    response = client.post(
-        "/api/spaces", json={"name": name}, headers=REQUEST_HEADERS
-    )
+    response = client.post("/api/spaces", json={"name": name}, headers=REQUEST_HEADERS)
     assert response.status_code == 201, response.text
     return response.json()
 
@@ -78,9 +76,7 @@ def parse_sse(lines: Any) -> list[dict[str, Any]]:
             data.append(line.split(":", 1)[1].lstrip())
     if event_name is not None:
         payload = "\n".join(data)
-        events.append(
-            {"event": event_name, "data": json.loads(payload) if payload else {}}
-        )
+        events.append({"event": event_name, "data": json.loads(payload) if payload else {}})
     return events
 
 
@@ -118,9 +114,7 @@ def stream_regenerate(
 
 
 def fork(conn: sqlite3.Connection, parent_branch_id: str, fork_commit_id: str, name: str):
-    parent = conn.execute(
-        "SELECT * FROM branches WHERE id = ?", (parent_branch_id,)
-    ).fetchone()
+    parent = conn.execute("SELECT * FROM branches WHERE id = ?", (parent_branch_id,)).fetchone()
     assert parent is not None
     branch, _anchor = branches.create(
         conn,

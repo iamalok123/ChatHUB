@@ -247,6 +247,43 @@ button:disabled {
   animation: soft-pulse 1s step-end infinite;
 }
 
+.message-entry {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 120px;
+}
+
+.memory-entry {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 96px;
+}
+
+.branch-graph .react-flow__controls {
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  box-shadow: var(--shadow-soft);
+}
+
+.branch-graph .react-flow__controls-button {
+  border-bottom-color: var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-muted);
+}
+
+.branch-graph .react-flow__controls-button:hover {
+  background: var(--color-hover);
+  color: var(--color-ink);
+}
+
+.branch-graph .react-flow__controls-button svg {
+  fill: currentColor;
+}
+
+.branch-graph .react-flow__attribution {
+  background: transparent;
+  color: var(--color-muted);
+}
+
 @keyframes fade-in {
   from {
     opacity: 0;

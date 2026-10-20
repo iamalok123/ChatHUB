@@ -108,9 +108,7 @@ class ChatStreamer:
                 raise
             except Exception as exc:
                 logger.warning("Provider stream failed: %s", type(exc).__name__)
-                mapped = ProviderError(
-                    "provider_error", "The AI provider failed unexpectedly."
-                )
+                mapped = ProviderError("provider_error", "The AI provider failed unexpectedly.")
                 await queue.put(("provider_error", mapped))
             finally:
                 await queue.put(("end", None))
@@ -119,9 +117,7 @@ class ChatStreamer:
         try:
             while True:
                 try:
-                    kind, payload = await asyncio.wait_for(
-                        queue.get(), timeout=HEARTBEAT_SECONDS
-                    )
+                    kind, payload = await asyncio.wait_for(queue.get(), timeout=HEARTBEAT_SECONDS)
                 except TimeoutError:
                     yield ": keep-alive\n\n"
                     continue
@@ -130,9 +126,7 @@ class ChatStreamer:
                     assert isinstance(event, StreamEvent)
                     if event.kind == "thought":
                         thinking_parts.append(event.text)
-                        yield sse(
-                            "thinking", {"text": event.text, "synthetic": False}
-                        )
+                        yield sse("thinking", {"text": event.text, "synthetic": False})
                     elif event.kind == "token":
                         text_parts.append(event.text)
                         yield sse("token", {"text": event.text})
@@ -194,9 +188,7 @@ class ChatStreamer:
             return
 
         answer = completion.text if completion is not None else "".join(text_parts)
-        thinking = (
-            completion.thinking if completion is not None else "".join(thinking_parts)
-        )
+        thinking = completion.thinking if completion is not None else "".join(thinking_parts)
         if completion is None:
             error = ProviderError(
                 "empty_response",
@@ -481,14 +473,10 @@ class ChatStreamer:
             else None
         )
         usage_json = (
-            json.dumps(completion.usage, separators=(",", ":"))
-            if completion is not None
-            else None
+            json.dumps(completion.usage, separators=(",", ":")) if completion is not None else None
         )
         stored_thinking = (
-            None
-            if thinking_source == "synthetic_context"
-            else (model_thinking or None)
+            None if thinking_source == "synthetic_context" else (model_thinking or None)
         )
         self.last_trace = trace
         try:
@@ -539,9 +527,7 @@ class ChatStreamer:
                 commits.update_trace(
                     conn,
                     self.assistant_commit_id,
-                    trace_json=json.dumps(
-                        trace, ensure_ascii=False, separators=(",", ":")
-                    ),
+                    trace_json=json.dumps(trace, ensure_ascii=False, separators=(",", ":")),
                 )
             finally:
                 conn.close()

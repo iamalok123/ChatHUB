@@ -54,13 +54,13 @@ def _message_trace_summary(raw: str | None) -> MessageTraceSummary | None:
         version=version,
         provider=trace.get("provider"),
         mock=bool(trace.get("mock")),
-        duration_ms=(
-            int(duration) if isinstance(duration, (int, float)) else 0
-        ),
+        duration_ms=(int(duration) if isinstance(duration, (int, float)) else 0),
         memory_count=(
             len(memories)
             if memories
-            else int(context_count) if isinstance(context_count, (int, float)) else 0
+            else int(context_count)
+            if isinstance(context_count, (int, float))
+            else 0
         ),
         thinking_summary=trace.get("thinking_summary"),
         thinking_source=trace.get("thinking_source"),
@@ -69,9 +69,7 @@ def _message_trace_summary(raw: str | None) -> MessageTraceSummary | None:
     )
 
 
-def message_out(
-    conn: sqlite3.Connection, branch: sqlite3.Row, commit: sqlite3.Row
-) -> MessageOut:
+def message_out(conn: sqlite3.Connection, branch: sqlite3.Row, commit: sqlite3.Row) -> MessageOut:
     origin = conn.execute(
         "SELECT name FROM branches WHERE id = ?", (commit["branch_id"],)
     ).fetchone()
@@ -127,11 +125,7 @@ def memory_out(
         inherited=bool(_value(item, "inherited", False)),
         excluded=excluded,
         origin_branch_id=_value(item, "origin_branch_id", ""),
-        origin_branch_name=(
-            origin_branch_name
-            or _value(item, "origin_branch_name")
-            or "unknown"
-        ),
+        origin_branch_name=(origin_branch_name or _value(item, "origin_branch_name") or "unknown"),
         source_commit_id=_value(item, "source_commit_id", ""),
         supersedes_id=_value(item, "supersedes_id"),
         derived_from_id=_value(item, "derived_from_id"),
@@ -148,9 +142,7 @@ def proposal_out(row) -> ProposalOut:
         commit_id=row["commit_id"],
         content=row["content"],
         kind=row["kind"] or "fact",
-        importance=float(
-            row["importance"] if row["importance"] is not None else 0.5
-        ),
+        importance=float(row["importance"] if row["importance"] is not None else 0.5),
         status=row["status"],
         reason=row["reason"] or "",
         conflicts_with_memory_id=row["conflicts_with_memory_id"],

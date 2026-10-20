@@ -1,0 +1,18 @@
+{
+  "name": "branchmind-workspace",
+  "private": true,
+  "version": "1.0.0",
+  "description": "BranchMind - Git for chatbot memory",
+  "scripts": {
+    "dev": "npm --prefix frontend run dev",
+    "dev:all": "powershell -NoProfile -ExecutionPolicy Bypass -File ./run.ps1",
+    "build": "npm --prefix frontend run build",
+    "test": "npm run test:frontend && npm run test:backend",
+    "test:frontend": "npm --prefix frontend test",
+    "test:backend": "backend\\.venv\\Scripts\\pytest backend/tests",
+    "lint": "npm run lint:frontend && npm run lint:backend",
+    "lint:frontend": "npm --prefix frontend run lint",
+    "lint:backend": "backend\\.venv\\Scripts\\ruff check backend",
+    "preview": "npm --prefix frontend run preview"
+  }
+}

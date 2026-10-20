@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { ApiError, api, errorMessage } from './client'
+import { ApiError, api, errorMessage } from '../api/client'
 
 function response(body: unknown, status = 200) {
   return {

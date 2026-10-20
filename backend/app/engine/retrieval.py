@@ -180,14 +180,12 @@ async def retrieve_memories(
                 query_vector = candidate
             else:
                 result.warnings.append(
-                    "The query embedding had an unexpected dimension; "
-                    "pinned memories were kept."
+                    "The query embedding had an unexpected dimension; pinned memories were kept."
                 )
     except Exception as exc:
         code = getattr(exc, "code", type(exc).__name__)
         result.warnings.append(
-            f"Memory similarity search was unavailable ({code}); "
-            "pinned memories were kept."
+            f"Memory similarity search was unavailable ({code}); pinned memories were kept."
         )
 
     scored: list[dict[str, Any]] = []
@@ -203,11 +201,7 @@ async def retrieve_memories(
                 similarity=None,
                 recency=recency,
                 score=None,
-                reason=(
-                    "stale embedding"
-                    if vector is None
-                    else "similarity search unavailable"
-                ),
+                reason=("stale embedding" if vector is None else "similarity search unavailable"),
             )
             entry["_item"] = item
             entry["_eligible"] = bool(item.get("pinned"))
@@ -242,9 +236,7 @@ async def retrieve_memories(
     selected_ids: set[str] = set()
     used_tokens = 0
     for entry in pinned:
-        detail = {
-            key: value for key, value in entry.items() if not key.startswith("_")
-        }
+        detail = {key: value for key, value in entry.items() if not key.startswith("_")}
         detail["reason"] = "pinned"
         result.selected.append(entry["_item"])
         result.selected_details.append(detail)
@@ -270,16 +262,12 @@ async def retrieve_memories(
         slots -= 1
 
     if used_tokens > memory_budget:
-        result.warnings.append(
-            "Pinned memories exceeded the configured memory token budget."
-        )
+        result.warnings.append("Pinned memories exceeded the configured memory token budget.")
 
     for entry in scored:
         if entry["id"] in selected_ids:
             continue
-        considered = {
-            key: value for key, value in entry.items() if not key.startswith("_")
-        }
+        considered = {key: value for key, value in entry.items() if not key.startswith("_")}
         if considered["reason"] == "stale embedding":
             considered["reason"] = "stale embedding"
         elif considered["reason"] == "similarity search unavailable":

@@ -138,10 +138,7 @@ async def chat(
     try:
         branch, space = _active_branch(conn, branch_id, user.id)
         current_head = branch["head_commit_id"]
-        if (
-            payload.expected_head_id is not None
-            and payload.expected_head_id != current_head
-        ):
+        if payload.expected_head_id is not None and payload.expected_head_id != current_head:
             raise ApiError(
                 409,
                 "head_conflict",
@@ -235,18 +232,14 @@ async def regenerate(
         branch, _space = _active_branch(conn, branch_id, user.id)
         target = require_visible_commit(conn, branch, commit_id)
         if target["role"] != "assistant" or not target["parent_id"]:
-            raise ApiError(
-                422, "invalid_target", "Only an assistant message can be regenerated"
-            )
+            raise ApiError(422, "invalid_target", "Only an assistant message can be regenerated")
         parent = visible_parent(conn, branch, target)
         source = branches_repo.require_owned(conn, target["branch_id"], user.id)
         if source["archived"]:
             raise ApiError(409, "branch_archived", "This branch is archived")
         space = spaces_repo.require_owned(conn, branch["space_id"], user.id)
 
-        name = branches_repo.unique_name(
-            conn, branch["space_id"], f"{source['name']} (retry)"
-        )
+        name = branches_repo.unique_name(conn, branch["space_id"], f"{source['name']} (retry)")
         new_branch, _anchor = branches_repo.create(
             conn,
             space_id=branch["space_id"],

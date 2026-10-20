@@ -70,9 +70,7 @@ def append_at_head(
         current = conn.execute(
             "SELECT head_commit_id FROM branches WHERE id = ?", (branch_id,)
         ).fetchone()
-        raise HeadConflict(
-            branch_id, current["head_commit_id"] if current else None
-        ) from None
+        raise HeadConflict(branch_id, current["head_commit_id"] if current else None) from None
     row = get(conn, commit_id)
     assert row is not None
     return row
@@ -168,14 +166,27 @@ def update_payload(
     conn.commit()
 
 
-def update_trace(
-    conn: sqlite3.Connection, commit_id: str, *, trace_json: str
-) -> None:
+def update_trace(conn: sqlite3.Connection, commit_id: str, *, trace_json: str) -> None:
     conn.execute(
         "UPDATE commits SET trace_json = ? WHERE id = ?",
         (trace_json, commit_id),
     )
     conn.commit()
+
+
+def list_events_for_space(conn: sqlite3.Connection, space_id: str) -> list[sqlite3.Row]:
+    return list(
+        conn.execute(
+            """
+            SELECT id, branch_id, role, source_branch_id, created_at
+            FROM commits
+            WHERE space_id = ? AND role IN ('merge', 'sync')
+              AND source_branch_id IS NOT NULL
+            ORDER BY created_at ASC, id ASC
+            """,
+            (space_id,),
+        ).fetchall()
+    )
 
 
 def count_messages(conn: sqlite3.Connection, commit_ids: list[str]) -> int:

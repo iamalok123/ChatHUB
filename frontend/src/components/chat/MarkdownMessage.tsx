@@ -1,5 +1,5 @@
 import { Check, Copy } from 'lucide-react'
-import { isValidElement, useState } from 'react'
+import { isValidElement, memo, useState } from 'react'
 import type { ReactNode } from 'react'
 import ReactMarkdown from 'react-markdown'
 import type { Components } from 'react-markdown'
@@ -106,7 +106,7 @@ const components: Components = {
   code: ({ className, children }) => <code className={className}>{children}</code>,
 }
 
-export function MarkdownMessage({
+export const MarkdownMessage = memo(function MarkdownMessage({
   content,
   streaming = false,
 }: {
@@ -130,4 +130,4 @@ export function MarkdownMessage({
       </ReactMarkdown>
     </div>
   )
-}
+})

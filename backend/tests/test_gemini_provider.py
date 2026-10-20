@@ -23,11 +23,7 @@ def gemini_settings(tmp_path) -> Settings:
 def chunk(text: str) -> types.GenerateContentResponse:
     return types.GenerateContentResponse(
         candidates=[
-            types.Candidate(
-                content=types.Content(
-                    role="model", parts=[types.Part(text=text)]
-                )
-            )
+            types.Candidate(content=types.Content(role="model", parts=[types.Part(text=text)]))
         ]
     )
 
@@ -37,9 +33,7 @@ def test_auto_mode_falls_back_to_mock_and_gemini_requires_key(tmp_path):
     assert auto.effective_llm_mode == "mock"
     auto.validate_runtime()
 
-    explicit = Settings(
-        db_path=tmp_path / "explicit.db", llm_mode="gemini", gemini_api_key=""
-    )
+    explicit = Settings(db_path=tmp_path / "explicit.db", llm_mode="gemini", gemini_api_key="")
     with pytest.raises(ValueError, match="GEMINI_API_KEY"):
         explicit.validate_runtime()
 
@@ -66,27 +60,19 @@ def test_replay_keeps_text_signature_and_drops_thoughts(tmp_path):
 
 
 def test_error_mapping_is_safe_and_actionable():
-    rate = map_provider_exception(
-        errors.APIError(429, {"error": {"message": "quota exceeded"}})
-    )
+    rate = map_provider_exception(errors.APIError(429, {"error": {"message": "quota exceeded"}}))
     assert rate.code == "rate_limited"
     assert rate.retryable is True
 
-    auth = map_provider_exception(
-        errors.APIError(403, {"error": {"message": "permission denied"}})
-    )
+    auth = map_provider_exception(errors.APIError(403, {"error": {"message": "permission denied"}}))
     assert auth.code == "authentication_failed"
     assert auth.retryable is False
 
-    unavailable = map_provider_exception(
-        errors.APIError(503, {"error": {"message": "try later"}})
-    )
+    unavailable = map_provider_exception(errors.APIError(503, {"error": {"message": "try later"}}))
     assert unavailable.code == "provider_unavailable"
     assert unavailable.retryable is True
 
-    missing = map_provider_exception(
-        errors.APIError(404, {"error": {"message": "model missing"}})
-    )
+    missing = map_provider_exception(errors.APIError(404, {"error": {"message": "model missing"}}))
     assert missing.code == "model_not_found"
 
     generic = map_provider_exception(RuntimeError("secret internals"))
@@ -99,7 +85,7 @@ async def test_stream_retries_before_first_token(tmp_path):
     provider = GeminiProvider(gemini_settings(tmp_path))
     calls = 0
 
-    def fake_open(model, contents, config):
+    async def fake_open(model, contents, config):
         nonlocal calls
         calls += 1
         if calls < 3:
@@ -133,7 +119,7 @@ async def test_stream_retries_before_first_token(tmp_path):
 async def test_stream_does_not_retry_after_tokens(tmp_path):
     provider = GeminiProvider(gemini_settings(tmp_path))
 
-    def fake_open(model, contents, config):
+    async def fake_open(model, contents, config):
         async def stream():
             yield chunk("Partial")
             raise errors.APIError(429, {"error": {"message": "quota"}})
@@ -174,7 +160,35 @@ async def test_model_allowlist_is_enforced(tmp_path):
 @pytest.mark.asyncio
 async def test_live_gemini_embedding():
     provider = GeminiProvider(Settings.from_env())
-    vectors = await provider.embed(["live smoke test"])
-    assert len(vectors) == 1
-    assert len(vectors[0]) == provider.embed_dim
-    await provider.close()
+    try:
+        vectors = await provider.embed(["live smoke test"])
+        assert len(vectors) == 1
+        assert len(vectors[0]) == provider.embed_dim
+    finally:
+        await provider.close()
+
+
+@pytest.mark.live
+@pytest.mark.skipif(
+    not os.getenv("GEMINI_API_KEY") or os.getenv("RUN_LIVE_TESTS") != "1",
+    reason="Live Gemini tests require GEMINI_API_KEY and RUN_LIVE_TESTS=1",
+)
+@pytest.mark.asyncio
+async def test_live_gemini_streaming_chat():
+    provider = GeminiProvider(Settings.from_env())
+    try:
+        events = [
+            event
+            async for event in provider.stream_chat(
+                system_instruction="Answer in one short sentence.",
+                turns=[ChatTurn(role="user", text="Say hello briefly.")],
+                thinking_level="low",
+                max_output_tokens=32,
+            )
+        ]
+    finally:
+        await provider.close()
+    completion = events[-1].completion
+    assert completion is not None
+    assert completion.provider == "gemini"
+    assert completion.text.strip()

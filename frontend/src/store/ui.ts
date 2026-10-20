@@ -57,18 +57,22 @@ export function applyTheme(theme: Theme): void {
 type UiState = {
   theme: Theme
   sidebarOpen: boolean
+  sidebarCollapsed: boolean
   inspectorOpen: boolean
   inspectorTab: InspectorTab
   settingsOpen: boolean
   newSpaceOpen: boolean
+  paletteOpen: boolean
   focusedCommitId: string | null
   toasts: Toast[]
   setTheme: (theme: Theme) => void
   setSidebarOpen: (open: boolean) => void
+  setSidebarCollapsed: (collapsed: boolean) => void
   setInspectorOpen: (open: boolean) => void
   setInspectorTab: (tab: InspectorTab) => void
   setSettingsOpen: (open: boolean) => void
   setNewSpaceOpen: (open: boolean) => void
+  setPaletteOpen: (open: boolean) => void
   focusCommit: (commitId: string) => void
   clearFocusedCommit: () => void
   pushToast: (kind: ToastKind, title: string, description?: string) => string
@@ -78,10 +82,12 @@ type UiState = {
 export const useUiStore = create<UiState>()((set, get) => ({
   theme: readTheme(),
   sidebarOpen: false,
+  sidebarCollapsed: false,
   inspectorOpen: true,
   inspectorTab: 'memory',
   settingsOpen: false,
   newSpaceOpen: false,
+  paletteOpen: false,
   focusedCommitId: null,
   toasts: [],
   setTheme: (theme) => {
@@ -89,10 +95,12 @@ export const useUiStore = create<UiState>()((set, get) => ({
     set({ theme })
   },
   setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
+  setSidebarCollapsed: (sidebarCollapsed) => set({ sidebarCollapsed }),
   setInspectorOpen: (inspectorOpen) => set({ inspectorOpen }),
   setInspectorTab: (inspectorTab) => set({ inspectorTab }),
   setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
   setNewSpaceOpen: (newSpaceOpen) => set({ newSpaceOpen }),
+  setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
   focusCommit: (focusedCommitId) => set({ focusedCommitId }),
   clearFocusedCommit: () => set({ focusedCommitId: null }),
   pushToast: (kind, title, description) => {

@@ -175,12 +175,8 @@ async def merge_memories(
                     kind=item.get("kind", "fact"),
                     importance=float(item.get("importance", 0.5)),
                     embedding=to_blob(vector) if vector is not None else None,
-                    embedding_model=(
-                        provider.embed_model if vector is not None else None
-                    ),
-                    embedding_dim=(
-                        provider.embed_dim if vector is not None else None
-                    ),
+                    embedding_model=(provider.embed_model if vector is not None else None),
+                    embedding_dim=(provider.embed_dim if vector is not None else None),
                     derived_from_id=item["id"],
                     commit=False,
                 )
@@ -212,9 +208,7 @@ async def merge_memories(
     except sqlite3.IntegrityError as exc:
         raise ApiError(409, "merge_conflict", "The merge could not be persisted") from exc
 
-    updated_target = conn.execute(
-        "SELECT * FROM branches WHERE id = ?", (target["id"],)
-    ).fetchone()
+    updated_target = conn.execute("SELECT * FROM branches WHERE id = ?", (target["id"],)).fetchone()
     assert updated_target is not None
     return MergeResultOut(
         source_branch_id=source["id"],
@@ -257,8 +251,7 @@ async def generate_merge_summary(
         )
 
     memory_lines = "\n".join(
-        f"- [{item.get('kind', 'fact')}] {item.get('content', '')}"
-        for item in selected
+        f"- [{item.get('kind', 'fact')}] {item.get('content', '')}" for item in selected
     )
     prompt = (
         f"Branch: {source['name']}\n"
@@ -298,4 +291,3 @@ async def generate_merge_summary(
         mock=False,
         warning=warning,
     )
-

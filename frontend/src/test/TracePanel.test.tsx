@@ -2,9 +2,9 @@ import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, expect, it, vi } from 'vitest'
 
-import type { Branch, TraceResponse } from '../../api/types'
-import { useUiStore } from '../../store/ui'
-import { TracePanel } from './TracePanel'
+import type { Branch, TraceResponse } from '../api/types'
+import { useUiStore } from '../store/ui'
+import { TracePanel } from '../components/inspector/TracePanel'
 
 const branch: Branch = {
   id: 'b1',
@@ -163,6 +163,40 @@ it('renders ranked memories, context, usage, and synthetic reasoning labels', as
 
   const [url] = fetchMock.mock.calls[0]
   expect(url).toBe('/api/branches/b1/messages/a1/trace')
+})
+
+it('labels a seeded demo trace as synthetic rather than live model output', async () => {
+  const demoTrace: TraceResponse = {
+    ...traceResponse,
+    trace: {
+      ...traceResponse.trace!,
+      provider: 'demo',
+      mock: false,
+      demo: true,
+      model: 'seeded-demo',
+    },
+  }
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => demoTrace,
+    })),
+  )
+
+  render(
+    <TracePanel branch={branch} target={{ branchId: 'b1', commitId: 'a1' }} />,
+  )
+
+  expect(
+    await screen.findByText(
+      'Seeded demo transcript. This is not a live model reply.',
+    ),
+  ).toBeInTheDocument()
+  expect(
+    screen.queryByText('Mock mode. This is not live Gemini reasoning.'),
+  ).not.toBeInTheDocument()
 })
 
 it('asks for a reply before showing a trace', () => {

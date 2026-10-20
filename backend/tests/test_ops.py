@@ -16,9 +16,7 @@ from tests.helpers import (
 def _main_branch(client: TestClient, space_id: str) -> dict:
     response = client.get(f"/api/spaces/{space_id}/branches")
     assert response.status_code == 200, response.text
-    return next(
-        branch for branch in response.json() if branch["parent_branch_id"] is None
-    )
+    return next(branch for branch in response.json() if branch["parent_branch_id"] is None)
 
 
 def _add_memory(
@@ -106,9 +104,7 @@ def test_fork_preview_and_fork_at_message_with_choices(client: TestClient) -> No
     )
     assert pinned_fork.status_code == 201, pinned_fork.text
     pinned_child = _memories(client, pinned_fork.json()["id"])
-    pinned_item = next(
-        item for item in pinned_child["memories"] if item["id"] == pinned["id"]
-    )
+    pinned_item = next(item for item in pinned_child["memories"] if item["id"] == pinned["id"])
     assert pinned_item["pinned"] is True
     assert pinned_item["inherited"] is True
 
@@ -191,9 +187,7 @@ def test_merge_only_selected_memories_and_never_messages(
     main_memories = _memories(client, main["id"])
     assert keep["content"] in _contents(main_memories)
     assert skip["content"] not in _contents(main_memories)
-    copied = next(
-        item for item in main_memories["memories"] if item["content"] == keep["content"]
-    )
+    copied = next(item for item in main_memories["memories"] if item["content"] == keep["content"])
     assert copied["origin_branch_id"] == main["id"]
     assert copied["derived_from_id"] == keep["id"]
 
@@ -319,9 +313,7 @@ def test_diff_reports_memory_and_message_divergence(client: TestClient) -> None:
     assert status == 200
     assert _done(child_events)
 
-    response = client.get(
-        f"/api/branches/{child['id']}/diff", params={"against": main["id"]}
-    )
+    response = client.get(f"/api/branches/{child['id']}/diff", params={"against": main["id"]})
     assert response.status_code == 200, response.text
     diff = response.json()
     assert diff["against_branch_id"] == main["id"]
@@ -335,9 +327,7 @@ def test_diff_reports_memory_and_message_divergence(client: TestClient) -> None:
     assert diff["messages_added_count"] > 0
     assert diff["messages_upstream_count"] > 0
 
-    invalid = client.get(
-        f"/api/branches/{child['id']}/diff", params={"against": child["id"]}
-    )
+    invalid = client.get(f"/api/branches/{child['id']}/diff", params={"against": child["id"]})
     assert invalid.status_code == 422
     assert invalid.json()["error"]["code"] == "invalid_diff_target"
 
@@ -381,6 +371,71 @@ def test_checkpoints_create_list_and_fork(client: TestClient) -> None:
         headers=REQUEST_HEADERS,
     )
     assert invalid.status_code == 404
+
+
+def test_space_graph_lists_branches_events_and_checkpoints(
+    client: TestClient,
+) -> None:
+    signup(client)
+    space = create_space(client)
+    main = _main_branch(client, space["id"])
+    child_response = client.post(
+        f"/api/branches/{main['id']}/fork",
+        json={"name": "Graph child"},
+        headers=REQUEST_HEADERS,
+    )
+    assert child_response.status_code == 201, child_response.text
+    child = child_response.json()
+
+    promoted = _add_memory(client, child["id"], "Decision pulled up from the child")
+    merged = client.post(
+        f"/api/branches/{child['id']}/merge",
+        json={"target_branch_id": main["id"], "memory_ids": [promoted["id"]]},
+        headers=REQUEST_HEADERS,
+    )
+    assert merged.status_code == 200, merged.text
+
+    upstream = _add_memory(client, main["id"], "Parent memory added after the fork")
+    synced = client.post(
+        f"/api/branches/{child['id']}/sync",
+        json={"memory_ids": [upstream["id"]]},
+        headers=REQUEST_HEADERS,
+    )
+    assert synced.status_code == 200, synced.text
+
+    checkpoint = client.post(
+        f"/api/branches/{child['id']}/checkpoints",
+        json={"name": "graph-point"},
+        headers=REQUEST_HEADERS,
+    )
+    assert checkpoint.status_code == 201, checkpoint.text
+
+    response = client.get(f"/api/spaces/{space['id']}/graph")
+    assert response.status_code == 200, response.text
+    graph = response.json()
+    assert {branch["id"] for branch in graph["branches"]} == {
+        main["id"],
+        child["id"],
+    }
+    assert {
+        (edge["kind"], edge["source_branch_id"], edge["target_branch_id"])
+        for edge in graph["edges"]
+    } == {
+        ("fork", main["id"], child["id"]),
+        ("merge", child["id"], main["id"]),
+        ("sync", main["id"], child["id"]),
+    }
+    assert [item["name"] for item in graph["checkpoints"]] == ["graph-point"]
+    assert graph["checkpoints"][0]["branch_id"] == child["id"]
+
+    signup(
+        client,
+        email="grace@example.com",
+        password="another correct horse",
+        display_name="Grace",
+    )
+    foreign = client.get(f"/api/spaces/{space['id']}/graph")
+    assert foreign.status_code == 404
 
 
 def test_branch_rename_archive_and_root_protection(client: TestClient) -> None:
@@ -511,25 +566,19 @@ def test_export_tolerates_deleted_merge_source(client: TestClient) -> None:
         headers=REQUEST_HEADERS,
     )
     assert merged.status_code == 200, merged.text
-    deleted = client.delete(
-        f"/api/branches/{child['id']}", headers=REQUEST_HEADERS
-    )
+    deleted = client.delete(f"/api/branches/{child['id']}", headers=REQUEST_HEADERS)
     assert deleted.status_code == 204
 
     exported = client.get(f"/api/spaces/{space['id']}/export")
     assert exported.status_code == 200, exported.text
     data = exported.json()
     merge_commit = next(
-        commit
-        for commit in data["commits"]
-        if commit["id"] == merged.json()["merge_commit_id"]
+        commit for commit in data["commits"] if commit["id"] == merged.json()["merge_commit_id"]
     )
     assert merge_commit["source_branch_id"] == child["id"]
     assert child["id"] not in {branch["id"] for branch in data["branches"]}
 
-    imported = client.post(
-        "/api/spaces/import", json=data, headers=REQUEST_HEADERS
-    )
+    imported = client.post("/api/spaces/import", json=data, headers=REQUEST_HEADERS)
     assert imported.status_code == 201, imported.text
     new_space = imported.json()["space"]["id"]
     new_main = _main_branch(client, new_space)
@@ -572,9 +621,7 @@ def test_export_import_roundtrip_remaps_ids(client: TestClient) -> None:
         len(data["checkpoints"]),
     )
 
-    imported = client.post(
-        "/api/spaces/import", json=data, headers=REQUEST_HEADERS
-    )
+    imported = client.post("/api/spaces/import", json=data, headers=REQUEST_HEADERS)
     assert imported.status_code == 201, imported.text
     result = imported.json()
     assert result["space"]["id"] != space["id"]
@@ -584,14 +631,10 @@ def test_export_import_roundtrip_remaps_ids(client: TestClient) -> None:
 
     new_id = result["space"]["id"]
     new_branches = {
-        branch["name"]: branch
-        for branch in client.get(f"/api/spaces/{new_id}/branches").json()
+        branch["name"]: branch for branch in client.get(f"/api/spaces/{new_id}/branches").json()
     }
     assert set(new_branches) == {"main", "Portable child"}
-    assert all(
-        branch["id"] not in {main["id"], child["id"]}
-        for branch in new_branches.values()
-    )
+    assert all(branch["id"] not in {main["id"], child["id"]} for branch in new_branches.values())
     assert new_branches["Portable child"]["parent_branch_id"] == new_branches["main"]["id"]
     assert new_branches["Portable child"]["fork_commit_id"] not in {
         commit["id"] for commit in data["commits"]
@@ -601,16 +644,10 @@ def test_export_import_roundtrip_remaps_ids(client: TestClient) -> None:
     assert [item["content"] for item in new_messages] == [
         item["content"] for item in _messages(client, main["id"])
     ]
-    assert memory["content"] in _contents(
-        _memories(client, new_branches["main"]["id"])
-    )
-    imported_child_memories = _memories(
-        client, new_branches["Portable child"]["id"]
-    )
+    assert memory["content"] in _contents(_memories(client, new_branches["main"]["id"]))
+    imported_child_memories = _memories(client, new_branches["Portable child"]["id"])
     imported_pinned = next(
-        item
-        for item in imported_child_memories["memories"]
-        if item["content"] == memory["content"]
+        item for item in imported_child_memories["memories"] if item["content"] == memory["content"]
     )
     assert imported_pinned["pinned"] is True
     new_checkpoints = client.get(

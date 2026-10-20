@@ -65,9 +65,9 @@ class Settings:
             db_path = ROOT_DIR / db_path
         allowed = tuple(
             model.strip()
-            for model in os.getenv(
-                "GEMINI_ALLOWED_MODELS", ",".join(DEFAULT_ALLOWED_MODELS)
-            ).split(",")
+            for model in os.getenv("GEMINI_ALLOWED_MODELS", ",".join(DEFAULT_ALLOWED_MODELS)).split(
+                ","
+            )
             if model.strip()
         )
         return cls(
@@ -78,9 +78,7 @@ class Settings:
             llm_mode=os.getenv("LLM_MODE", "auto").strip().lower(),
             gemini_api_key=os.getenv("GEMINI_API_KEY", "").strip(),
             gemini_chat_model=os.getenv("GEMINI_CHAT_MODEL", "gemini-3.8-flash").strip(),
-            gemini_embed_model=os.getenv(
-                "GEMINI_EMBED_MODEL", "gemini-embedding-001"
-            ).strip(),
+            gemini_embed_model=os.getenv("GEMINI_EMBED_MODEL", "gemini-embedding-001").strip(),
             gemini_embed_dim=_env_int("GEMINI_EMBED_DIM", 768),
             gemini_allowed_models=allowed,
             gemini_request_timeout_seconds=_env_int("GEMINI_REQUEST_TIMEOUT_SECONDS", 120),
@@ -104,9 +102,7 @@ class Settings:
         ports = {self.frontend_port, self.backend_port}
         origins: list[str] = []
         for port in sorted(ports):
-            origins.extend(
-                [f"http://127.0.0.1:{port}", f"http://localhost:{port}"]
-            )
+            origins.extend([f"http://127.0.0.1:{port}", f"http://localhost:{port}"])
         return tuple(origins)
 
     def validate_runtime(self) -> None:

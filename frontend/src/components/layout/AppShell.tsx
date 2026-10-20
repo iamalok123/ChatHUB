@@ -2,13 +2,15 @@ import {
   AlertTriangle,
   Brain,
   GitBranch,
+  Play,
   Plus,
   RefreshCw,
   ShieldCheck,
   Sparkles,
 } from 'lucide-react'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
+import { errorMessage } from '../../api/client'
 import { useMediaQuery } from '../../lib/useMediaQuery'
 import { useUiStore } from '../../store/ui'
 import {
@@ -18,6 +20,8 @@ import {
 } from '../../store/workspace'
 import { Button } from '../ui/Button'
 import { BranchView } from './BranchView'
+import { CommandPalette } from './CommandPalette'
+import { GlobalShortcuts } from './GlobalShortcuts'
 import { HealthBanner } from './HealthBanner'
 import { Inspector } from './Inspector'
 import { OperationDialogs } from '../operations/OperationDialogs'
@@ -28,6 +32,9 @@ import { WorkspaceHeader } from './WorkspaceHeader'
 
 function EmptyWorkspace() {
   const setNewSpaceOpen = useUiStore((state) => state.setNewSpaceOpen)
+  const pushToast = useUiStore((state) => state.pushToast)
+  const createDemo = useWorkspaceStore((state) => state.createDemo)
+  const [demoPending, setDemoPending] = useState(false)
   const features = [
     {
       icon: GitBranch,
@@ -46,6 +53,22 @@ function EmptyWorkspace() {
     },
   ]
 
+  const loadDemo = async () => {
+    setDemoPending(true)
+    try {
+      await createDemo()
+      pushToast(
+        'success',
+        'Demo space loaded',
+        'Three branches, five memories, one merge, and a pending proposal.',
+      )
+    } catch (error) {
+      pushToast('error', 'Could not load the demo', errorMessage(error))
+    } finally {
+      setDemoPending(false)
+    }
+  }
+
   return (
     <div className="mx-auto flex min-h-full w-full max-w-[760px] flex-col justify-center px-6 py-12 sm:px-8">
       <div className="animate-fade-in">
@@ -60,14 +83,24 @@ function EmptyWorkspace() {
           Create your first space. It starts with a main branch, its own memory, and a
           profile that shapes every reply.
         </p>
-        <Button
-          className="mt-7"
-          size="lg"
-          onClick={() => setNewSpaceOpen(true)}
-          leadingIcon={<Plus size={16} aria-hidden />}
-        >
-          Create a space
-        </Button>
+        <div className="mt-7 flex flex-wrap gap-2">
+          <Button
+            size="lg"
+            onClick={() => setNewSpaceOpen(true)}
+            leadingIcon={<Plus size={16} aria-hidden />}
+          >
+            Create a space
+          </Button>
+          <Button
+            variant="secondary"
+            size="lg"
+            loading={demoPending}
+            onClick={() => void loadDemo()}
+            leadingIcon={!demoPending ? <Play size={15} aria-hidden /> : undefined}
+          >
+            Load demo space
+          </Button>
+        </div>
 
         <div className="mt-12 grid gap-3 sm:grid-cols-3">
           {features.map((feature) => (
@@ -166,6 +199,7 @@ export function AppShell() {
   const isMobile = !useMediaQuery('(min-width: 900px)')
   const isWide = useMediaQuery('(min-width: 1280px)')
   const sidebarOpen = useUiStore((state) => state.sidebarOpen)
+  const sidebarCollapsed = useUiStore((state) => state.sidebarCollapsed)
   const inspectorOpen = useUiStore((state) => state.inspectorOpen)
   const setSidebarOpen = useUiStore((state) => state.setSidebarOpen)
   const setInspectorOpen = useUiStore((state) => state.setInspectorOpen)
@@ -183,12 +217,13 @@ export function AppShell() {
     }
   }, [isWide, setInspectorOpen])
 
-  const sidebarVisible = !isMobile || sidebarOpen
+  const sidebarVisible = isMobile ? sidebarOpen : !sidebarCollapsed
   const inspectorVisible = Boolean(branch) && inspectorOpen
   const inspectorAsDrawer = !isWide && inspectorVisible
 
   return (
     <div className="flex h-svh min-h-0 overflow-hidden bg-bg text-ink">
+      <GlobalShortcuts />
       {isMobile && sidebarOpen && (
         <button
           type="button"
@@ -230,6 +265,7 @@ export function AppShell() {
         </div>
       </div>
 
+      <CommandPalette />
       <NewSpaceDialog />
       <SettingsDialog />
       <OperationDialogs />

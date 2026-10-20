@@ -2,6 +2,7 @@ import {
   ArrowDown,
   ArrowUp,
   GitBranch,
+  GitCompare,
   GitFork,
   GitMerge,
   Lock,
@@ -11,10 +12,11 @@ import {
   TriangleAlert,
   X,
 } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { KeyboardEvent } from 'react'
 
 import type { Branch, Space } from '../../api/types'
+import { branchAncestors } from '../../lib/branchTree'
 import { cn } from '../../lib/cn'
 import { plural, sentenceCase } from '../../lib/format'
 import { useOperationsStore } from '../../store/operations'
@@ -43,19 +45,38 @@ function BranchChat({ branch, space }: { branch: Branch; space: Space }) {
 
   const openFork = useOperationsStore((state) => state.openFork)
   const openMerge = useOperationsStore((state) => state.openMerge)
+  const openCompare = useOperationsStore((state) => state.openCompare)
   const focusedCommitId = useUiStore((state) => state.focusedCommitId)
   const [draft, setDraft] = useState('')
   const [stick, setStick] = useState(true)
   const scrollRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  const branchColors = new Map(branches.map((item) => [item.id, item.color]))
+  const branchColors = useMemo(
+    () => new Map(branches.map((item) => [item.id, item.color])),
+    [branches],
+  )
+  const hasAncestor = branchAncestors(branches, branch.id).length > 0
   const hasContent = Boolean(messages && messages.length > 0) || Boolean(live)
   const canWrite = !branch.archived && !loading && messages !== null
+  const openTrace = useCallback(
+    (commitId: string) => {
+      useTraceStore.getState().selectTrace({ branchId: branch.id, commitId })
+      useUiStore.getState().setInspectorTab('why')
+      useUiStore.getState().setInspectorOpen(true)
+    },
+    [branch.id],
+  )
+  const forkFromMessage = useCallback(
+    (commitId: string) => openFork({ branchId: branch.id, commitId }),
+    [branch.id, openFork],
+  )
 
   useEffect(() => {
     useTraceStore.getState().clearTrace()
-    useUiStore.getState().setInspectorTab('memory')
+    if (useUiStore.getState().inspectorTab === 'why') {
+      useUiStore.getState().setInspectorTab('memory')
+    }
     useUiStore.getState().clearFocusedCommit()
   }, [branch.id])
 
@@ -99,12 +120,6 @@ function BranchChat({ branch, space }: { branch: Branch; space: Space }) {
     })
     return () => window.cancelAnimationFrame(frame)
   }, [live?.content, live?.thinking, messages, stick])
-
-  const openTrace = (commitId: string) => {
-    useTraceStore.getState().selectTrace({ branchId: branch.id, commitId })
-    useUiStore.getState().setInspectorTab('why')
-    useUiStore.getState().setInspectorOpen(true)
-  }
 
   const onScroll = () => {
     const element = scrollRef.current
@@ -188,6 +203,16 @@ function BranchChat({ branch, space }: { branch: Branch; space: Space }) {
               >
                 Fork
               </Button>
+              {hasAncestor && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => openCompare(branch.id)}
+                  leadingIcon={<GitCompare size={12} aria-hidden />}
+                >
+                  Compare
+                </Button>
+              )}
               {branch.parent_branch_id && (
                 <Button
                   variant="secondary"
@@ -270,9 +295,7 @@ function BranchChat({ branch, space }: { branch: Branch; space: Space }) {
                   message={message}
                   color={branchColors.get(message.branch_id)}
                   onOpenTrace={openTrace}
-                  onFork={() =>
-                    openFork({ branchId: branch.id, commitId: message.id })
-                  }
+                  onFork={forkFromMessage}
                 />
               ))}
               {live && <LiveMessageItem live={live} />}

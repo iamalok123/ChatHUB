@@ -8,10 +8,10 @@ import {
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { Branch, Space } from '../../api/types'
-import { useUiStore } from '../../store/ui'
-import { useWorkspaceStore } from '../../store/workspace'
-import { PersonalizationPanel } from './PersonalizationPanel'
+import type { Branch, Space } from '../api/types'
+import { useUiStore } from '../store/ui'
+import { useWorkspaceStore } from '../store/workspace'
+import { PersonalizationPanel } from '../components/inspector/PersonalizationPanel'
 
 const space: Space = {
   id: 's1',

@@ -96,17 +96,11 @@ def map_provider_exception(exc: Exception) -> ProviderError:
                 "Gemini rejected the request.",
                 status_code=400,
             )
-        return ProviderError(
-            "provider_error", "Gemini request failed.", status_code=code or None
-        )
+        return ProviderError("provider_error", "Gemini request failed.", status_code=code or None)
     if isinstance(exc, (httpx.TimeoutException, TimeoutError, asyncio.TimeoutError)):
-        return ProviderError(
-            "provider_timeout", "Gemini timed out.", retryable=True
-        )
+        return ProviderError("provider_timeout", "Gemini timed out.", retryable=True)
     if isinstance(exc, (httpx.HTTPError, ConnectionError, OSError)):
-        return ProviderError(
-            "provider_unreachable", "Could not reach Gemini.", retryable=True
-        )
+        return ProviderError("provider_unreachable", "Could not reach Gemini.", retryable=True)
     return ProviderError("provider_error", "Gemini request failed.")
 
 
@@ -165,9 +159,7 @@ class GeminiProvider(LLMProvider):
         self._configured = bool(settings.gemini_api_key)
         self._client = genai.Client(
             api_key=settings.gemini_api_key or None,
-            http_options=types.HttpOptions(
-                timeout=settings.gemini_request_timeout_seconds * 1000
-            ),
+            http_options=types.HttpOptions(timeout=settings.gemini_request_timeout_seconds * 1000),
         )
         self._health_cache: ProviderHealth | None = None
         self._health_at = 0.0
@@ -203,26 +195,22 @@ class GeminiProvider(LLMProvider):
                     signature = _signature_from_b64(raw.get("thought_signature"))
                     if not text and signature is None:
                         continue
-                    parts.append(
-                        types.Part(text=text or None, thought_signature=signature)
-                    )
+                    parts.append(types.Part(text=text or None, thought_signature=signature))
                 if not parts:
                     parts = [types.Part(text=turn.text)]
                 contents.append(types.Content(role="model", parts=parts))
             else:
                 role = "model" if turn.role == "assistant" else "user"
-                contents.append(
-                    types.Content(role=role, parts=[types.Part(text=turn.text)])
-                )
+                contents.append(types.Content(role=role, parts=[types.Part(text=turn.text)]))
         return contents
 
-    def _open_stream(
+    async def _open_stream(
         self,
         model: str,
         contents: list[types.Content],
         config: types.GenerateContentConfig,
     ) -> AsyncIterator[types.GenerateContentResponse]:
-        return self._client.aio.models.generate_content_stream(
+        return await self._client.aio.models.generate_content_stream(
             model=model, contents=contents, config=config
         )
 
@@ -253,7 +241,7 @@ class GeminiProvider(LLMProvider):
         first: types.GenerateContentResponse | None = None
         for attempt in range(MAX_ATTEMPTS):
             try:
-                stream = self._open_stream(model_name, contents, config)
+                stream = await self._open_stream(model_name, contents, config)
                 try:
                     first = await anext(stream)
                 except StopAsyncIteration:
@@ -369,9 +357,7 @@ class GeminiProvider(LLMProvider):
             config=types.GenerateContentConfig(
                 system_instruction=system_instruction or None,
                 response_mime_type="application/json",
-                thinking_config=types.ThinkingConfig(
-                    include_thoughts=False, thinking_level="low"
-                ),
+                thinking_config=types.ThinkingConfig(include_thoughts=False, thinking_level="low"),
                 max_output_tokens=max_output_tokens,
             ),
         )
@@ -384,9 +370,7 @@ class GeminiProvider(LLMProvider):
         assistant_text: str,
         max_candidates: int = 5,
     ) -> list[MemoryCandidate]:
-        payload = json.dumps(
-            {"user": user_text, "assistant": assistant_text}, ensure_ascii=False
-        )
+        payload = json.dumps({"user": user_text, "assistant": assistant_text}, ensure_ascii=False)
         raw = await self.generate_json(
             prompt=payload,
             system_instruction=EXTRACTION_INSTRUCTION,
@@ -446,8 +430,7 @@ class GeminiProvider(LLMProvider):
             response = await self._embed_batch(batch, task_type)
             embeddings = response.embeddings or []
             batch_vectors = [
-                [float(value) for value in (embedding.values or [])]
-                for embedding in embeddings
+                [float(value) for value in (embedding.values or [])] for embedding in embeddings
             ]
             vectors.extend(batch_vectors)
         return validate_vectors(vectors, len(texts), self.embed_dim)

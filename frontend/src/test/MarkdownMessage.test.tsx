@@ -1,7 +1,7 @@
 import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, expect, it } from 'vitest'
 
-import { MarkdownMessage } from './MarkdownMessage'
+import { MarkdownMessage } from '../components/chat/MarkdownMessage'
 
 afterEach(() => {
   cleanup()

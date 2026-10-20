@@ -72,9 +72,7 @@ def fork_preview(
     return preview_fork(conn, request.app.state.provider, branch, commit_id)
 
 
-@router.post(
-    "/branches/{branch_id}/fork", response_model=BranchOut, status_code=201
-)
+@router.post("/branches/{branch_id}/fork", response_model=BranchOut, status_code=201)
 def fork_branch(
     branch_id: str,
     payload: ForkRequest,
@@ -106,9 +104,7 @@ async def merge_preview(
 ) -> MergePreviewOut:
     source = branches_repo.require_owned(conn, branch_id, user.id)
     resolved_target = load_merge_target(conn, source, target, user.id)
-    return await preview_merge(
-        conn, request.app.state.provider, source, resolved_target
-    )
+    return await preview_merge(conn, request.app.state.provider, source, resolved_target)
 
 
 @router.post("/branches/{branch_id}/merge", response_model=MergeResultOut)
@@ -120,9 +116,7 @@ async def merge(
     conn: DbConn,
 ) -> MergeResultOut:
     source = branches_repo.require_owned(conn, branch_id, user.id)
-    resolved_target = load_merge_target(
-        conn, source, payload.target_branch_id, user.id
-    )
+    resolved_target = load_merge_target(conn, source, payload.target_branch_id, user.id)
     return await merge_memories(
         conn,
         request.app.state.provider,
@@ -132,9 +126,7 @@ async def merge(
     )
 
 
-@router.post(
-    "/branches/{branch_id}/merge-summary", response_model=MergeSummaryOut
-)
+@router.post("/branches/{branch_id}/merge-summary", response_model=MergeSummaryOut)
 async def merge_summary(
     branch_id: str,
     payload: MergeSummaryRequest,
@@ -143,9 +135,7 @@ async def merge_summary(
     conn: DbConn,
 ) -> MergeSummaryOut:
     source = branches_repo.require_owned(conn, branch_id, user.id)
-    resolved_target = load_merge_target(
-        conn, source, payload.target_branch_id, user.id
-    )
+    resolved_target = load_merge_target(conn, source, payload.target_branch_id, user.id)
     return await generate_merge_summary(
         conn,
         request.app.state.provider,
@@ -177,9 +167,7 @@ async def sync(
 ) -> SyncResultOut:
     branch = branches_repo.require_owned(conn, branch_id, user.id)
     parent = load_parent(conn, branch, user.id)
-    return await sync_memories(
-        conn, request.app.state.provider, branch, parent, payload
-    )
+    return await sync_memories(conn, request.app.state.provider, branch, parent, payload)
 
 
 @router.get("/branches/{branch_id}/diff", response_model=DiffOut)
@@ -195,19 +183,14 @@ def diff(
     return compute_diff(conn, request.app.state.provider, branch, against_branch)
 
 
-@router.get(
-    "/branches/{branch_id}/checkpoints", response_model=list[CheckpointOut]
-)
+@router.get("/branches/{branch_id}/checkpoints", response_model=list[CheckpointOut])
 def list_checkpoints(
     branch_id: str,
     user: CurrentUser,
     conn: DbConn,
 ) -> list[CheckpointOut]:
     branches_repo.require_owned(conn, branch_id, user.id)
-    return [
-        _checkpoint_out(row)
-        for row in checkpoints_repo.list_for_branch(conn, branch_id)
-    ]
+    return [_checkpoint_out(row) for row in checkpoints_repo.list_for_branch(conn, branch_id)]
 
 
 @router.post(
@@ -278,9 +261,7 @@ def export_space_route(
     return export_space(conn, space)
 
 
-@router.post(
-    "/spaces/import", response_model=ImportResultOut, status_code=201
-)
+@router.post("/spaces/import", response_model=ImportResultOut, status_code=201)
 def import_space_route(
     payload: SpaceExport,
     user: CurrentUser,

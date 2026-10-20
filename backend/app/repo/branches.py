@@ -18,9 +18,7 @@ BRANCH_COLORS = (
 )
 
 
-def require_owned(
-    conn: sqlite3.Connection, branch_id: str, owner_id: str
-) -> sqlite3.Row:
+def require_owned(conn: sqlite3.Connection, branch_id: str, owner_id: str) -> sqlite3.Row:
     row = conn.execute(
         """
         SELECT branches.*

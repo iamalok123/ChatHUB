@@ -231,3 +231,36 @@ This file records decisions and deviations from the original local-only, Ollama-
 **Reason:** Provenance should be immediate without new API calls, routes, or persisted navigation state. Keep-origin-meaning visible is more useful than showing a stale inspector over the target message.
 
 **Consequences:** Source jumps do not survive reloads and anchor, merge, sync, or checkpoint commits have no message to focus. The Why panel remains a complete explanation even when extraction made no memory change.
+
+## D-033: Phase 10 navigation is global and graph-aware
+
+**Decision:** The command palette and global shortcuts live in the app shell and share the UI store with the inspector. The branch graph loads from one space-level endpoint and keeps fork, merge, sync, and checkpoint data in a single response. Compare is an ancestor-only dialog opened from the branch view, branch menu, or palette.
+
+**Reason:** Phase 10 actions are reachable from several surfaces, so local component state would duplicate modal hosting and keyboard handling. One graph payload avoids repeated branch-by-branch requests while the response remains small enough for a local SQLite-backed app.
+
+**Consequences:** The graph endpoint omits edges to deleted branches, while archived branches remain visible. Switching branches preserves an open Graph or Settings inspector tab; only Why resets to Memory. Compare is hidden for root branches because there is no ancestor to compare against.
+
+## D-034: Large lists rely on browser containment before virtualization
+
+**Decision:** Static transcript rows and memory cards opt into `content-visibility: auto` with estimated intrinsic sizes. `MessageItem` and `MarkdownMessage` are memoized, and message action callbacks are stable so a streaming token or a single edited row does not reparse the entire transcript.
+
+**Reason:** The acceptance target is 500 messages and 200 memories, where off-screen markdown parsing dominates rendering more than the remaining DOM size. Browser containment keeps keyboard navigation and find-in-page behavior intact, unlike an early windowing layer that would add scroll-anchor complexity.
+
+**Consequences:** Rows use estimated heights until painted, so extremely tall messages can adjust scroll height as they enter the viewport. The memoization test updates one row in a 500-message list and asserts that only that row re-renders; virtualization remains a later option if measured scrolling still misses the target.
+
+## D-035: The demo space is seeded per user and never fakes Gemini
+
+**Decision:** `POST /api/demo-space` builds a fresh owned space with a main branch, two forks at different baselines, one upward merge, one checkpoint, one pending proposal, pinned and excluded inherited memories, and stored assistant traces. The traces use `provider: "demo"`, `thinking_source: "synthetic_context"`, and an explicit seeded-transcript summary. Embeddings are generated through the active provider; if the call fails, the demo still loads with missing-embedding warnings. The empty workspace and Settings > Data both expose the action.
+
+**Reason:** A new account needs an immediately inspectable example of branching, memory selection, merge, sync pressure, and the Why view without requiring a live model key or copying content from another user. Labelling the traces prevents a seeded transcript from being mistaken for model reasoning.
+
+**Consequences:** Demo creation is idempotent only in the sense that it always creates a new space, never a shared one. Loading it during live Gemini mode may take one embedding round-trip; loading it in mock mode is fully local. The demo is ordinary mutable data, so the user can chat, fork, merge, or delete it like any other space.
+
+## D-036: Test suite consolidation and unified root scripts
+
+**Decision:** Centralize all scattered frontend tests into a dedicated `frontend/src/test/` directory, mirroring the backend's clean separation in `backend/tests/`. Keep production source directories (`components/`, `api/`, `lib/`, `store/`) focused purely on application logic. Add a root `package.json` proxying standard commands (`dev`, `build`, `test`, `lint`) across frontend and backend.
+
+**Reason:** Having test files co-located inside dozens of nested UI component and feature folders creates clutter and makes production packaging less organized. Centralizing tests into `frontend/src/test/` with updated imports cleans up the production tree while ensuring Vitest and TypeScript continue to validate all 14 test suites and 38 test cases seamlessly.
+
+**Consequences:** Moving tests required updating relative import paths for components and store modules. Production code is now free of test clutter. Developers can run `npm run dev`, `npm test`, `npm run build`, and `npm run lint` directly from the repository root or within the `frontend/` directory.
+

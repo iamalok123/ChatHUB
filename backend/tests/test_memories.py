@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.engine.retrieval import retrieve_memories
@@ -154,9 +155,10 @@ def test_fork_overrides_are_branch_local_and_do_not_leak(client, app):
     assert child_list["memories"] == []
     assert [item["id"] for item in child_list["excluded"]] == [memory["id"]]
 
-    assert client.get(f"/api/branches/{main['id']}/memories").json()["memories"][0][
-        "content"
-    ] == "I prefer tea."
+    assert (
+        client.get(f"/api/branches/{main['id']}/memories").json()["memories"][0]["content"]
+        == "I prefer tea."
+    )
 
     status, events = stream_chat(client, child["id"], "What do I prefer?")
     assert status == 200
@@ -206,9 +208,10 @@ def test_fork_overrides_are_branch_local_and_do_not_leak(client, app):
         headers=REQUEST_HEADERS,
     )
     assert hidden.status_code == 404
-    assert client.get(f"/api/branches/{main['id']}/memories").json()["memories"][0][
-        "id"
-    ] == memory["id"]
+    assert (
+        client.get(f"/api/branches/{main['id']}/memories").json()["memories"][0]["id"]
+        == memory["id"]
+    )
 
 
 def test_review_proposals_accept_reject_and_next_turn_retrieval(client, app):
@@ -426,10 +429,7 @@ def test_auto_mode_saves_memories_and_proposes_conflicts(client):
     trace = client.get(
         f"/api/branches/{main['id']}/messages/{done['assistant_commit_id']}/trace"
     ).json()["trace"]
-    assert all(
-        operation["op"] == "duplicate_skipped"
-        for operation in trace["memory_operations"]
-    )
+    assert all(operation["op"] == "duplicate_skipped" for operation in trace["memory_operations"])
     assert len(client.get(f"/api/branches/{main['id']}/memories").json()["memories"]) == 2
     assert len(client.get(f"/api/branches/{main['id']}/proposals").json()) == 1
 
@@ -456,9 +456,7 @@ def test_off_mode_skips_extraction_entirely(client):
     ).json()["trace"]
     assert trace["memory_mode"] == "off"
     assert trace["extraction"]["status"] == "skipped"
-    assert trace["memory_operations"] == [
-        {"op": "extraction_skipped", "reason": "memory_mode=off"}
-    ]
+    assert trace["memory_operations"] == [{"op": "extraction_skipped", "reason": "memory_mode=off"}]
     assert client.get(f"/api/branches/{main['id']}/memories").json()["memories"] == []
     assert client.get(f"/api/branches/{main['id']}/proposals").json() == []
 
@@ -488,6 +486,7 @@ def test_extraction_failure_does_not_fail_chat(client, app, monkeypatch):
     assert client.get(f"/api/branches/{main['id']}/memories").json()["memories"] == []
 
 
+@pytest.mark.asyncio
 async def test_retrieval_scores_pinned_stale_and_excluded_memories(client, app):
     signup(client)
     space = create_space(client)
@@ -519,9 +518,7 @@ async def test_retrieval_scores_pinned_stale_and_excluded_memories(client, app):
                 embedding_dim=provider.embed_dim,
             )
 
-        relevant = await create_memory(
-            "I live in Bhubaneswar.", importance=0.9
-        )
+        relevant = await create_memory("I live in Bhubaneswar.", importance=0.9)
         stale = await create_memory(
             "I prefer morning runs.", kind="preference", model="old-embedding-model"
         )
@@ -570,9 +567,7 @@ async def test_retrieval_scores_pinned_stale_and_excluded_memories(client, app):
         assert pinned_result.selected_details[0]["reason"] == "pinned"
         assert pinned_result.used_tokens > 1
         assert any("exceeded" in item for item in pinned_result.warnings)
-        skipped = {
-            item["id"]: item["reason"] for item in pinned_result.considered
-        }
+        skipped = {item["id"]: item["reason"] for item in pinned_result.considered}
         assert skipped[relevant["id"]] == "skipped for memory budget"
 
         listing = client.get(f"/api/branches/{branch['id']}/memories").json()

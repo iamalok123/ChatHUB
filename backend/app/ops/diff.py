@@ -19,9 +19,7 @@ def _latest_common_commit(
     source: sqlite3.Row,
     against: sqlite3.Row,
 ) -> str | None:
-    source_ids = {
-        row["id"] for row in visible_commit_chain(conn, source)
-    }
+    source_ids = {row["id"] for row in visible_commit_chain(conn, source)}
     for row in visible_commit_chain(conn, against):
         if row["id"] in source_ids:
             return str(row["id"])

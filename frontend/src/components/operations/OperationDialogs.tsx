@@ -1,4 +1,5 @@
 import { useOperationsStore } from '../../store/operations'
+import { CompareDialog } from './CompareDialog'
 import { ForkDialog } from './ForkDialog'
 import { MergeDialog } from './MergeDialog'
 import { RenameBranchDialog } from './RenameBranchDialog'
@@ -9,6 +10,7 @@ export function OperationDialogs() {
   const mergeSourceId = useOperationsStore((state) => state.mergeSourceId)
   const syncBranchId = useOperationsStore((state) => state.syncBranchId)
   const renameBranchId = useOperationsStore((state) => state.renameBranchId)
+  const compareBranchId = useOperationsStore((state) => state.compareBranchId)
 
   return (
     <>
@@ -24,6 +26,9 @@ export function OperationDialogs() {
       {syncBranchId && <SyncDialog key={syncBranchId} branchId={syncBranchId} />}
       {renameBranchId && (
         <RenameBranchDialog key={renameBranchId} branchId={renameBranchId} />
+      )}
+      {compareBranchId && (
+        <CompareDialog key={compareBranchId} branchId={compareBranchId} />
       )}
     </>
   )

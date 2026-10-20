@@ -1,6 +1,7 @@
 import {
   Archive,
   ArchiveRestore,
+  GitCompare,
   GitFork,
   MoreHorizontal,
   Pencil,
@@ -9,6 +10,7 @@ import { useEffect, useRef, useState } from 'react'
 
 import { api, errorMessage } from '../../api/client'
 import type { Branch } from '../../api/types'
+import { branchAncestors } from '../../lib/branchTree'
 import { cn } from '../../lib/cn'
 import { useOperationsStore } from '../../store/operations'
 import { useUiStore } from '../../store/ui'
@@ -52,8 +54,11 @@ export function BranchMenu({ branch }: { branch: Branch }) {
   const ref = useRef<HTMLDivElement>(null)
   const openFork = useOperationsStore((state) => state.openFork)
   const openRename = useOperationsStore((state) => state.openRename)
+  const openCompare = useOperationsStore((state) => state.openCompare)
+  const branches = useWorkspaceStore((state) => state.branches)
   const upsertBranch = useWorkspaceStore((state) => state.upsertBranch)
   const pushToast = useUiStore((state) => state.pushToast)
+  const hasAncestor = branchAncestors(branches, branch.id).length > 0
 
   useEffect(() => {
     if (!open) return
@@ -132,6 +137,16 @@ export function BranchMenu({ branch }: { branch: Branch }) {
               }
             }}
           />
+          {hasAncestor && (
+            <MenuItem
+              icon={<GitCompare size={13} aria-hidden />}
+              label="Compare with ancestor"
+              onClick={() => {
+                setOpen(false)
+                openCompare(branch.id)
+              }}
+            />
+          )}
           <MenuItem
             icon={<Pencil size={13} aria-hidden />}
             label="Rename"

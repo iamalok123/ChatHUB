@@ -278,10 +278,7 @@ def _validate(payload: SpaceExport) -> None:
             and proposal.conflicts_with_memory_id not in memories
         ):
             raise _invalid("A proposal conflicts with an unknown memory")
-        if (
-            proposal.accepted_memory_id is not None
-            and proposal.accepted_memory_id not in memories
-        ):
+        if proposal.accepted_memory_id is not None and proposal.accepted_memory_id not in memories:
             raise _invalid("A proposal references an unknown accepted memory")
 
     for checkpoint in payload.checkpoints:
@@ -291,9 +288,7 @@ def _validate(payload: SpaceExport) -> None:
             raise _invalid("A checkpoint has an unknown commit")
 
 
-def import_space(
-    conn: sqlite3.Connection, owner_id: str, payload: SpaceExport
-) -> ImportResultOut:
+def import_space(conn: sqlite3.Connection, owner_id: str, payload: SpaceExport) -> ImportResultOut:
     _validate(payload)
     space_id = new_id()
     branch_map = {branch.id: new_id() for branch in payload.branches}
@@ -339,19 +334,9 @@ def import_space(
                         branch_map[branch.id],
                         space_id,
                         branch.name,
-                        (
-                            branch_map[branch.parent_branch_id]
-                            if branch.parent_branch_id
-                            else None
-                        ),
-                        (
-                            commit_map[branch.fork_commit_id]
-                            if branch.fork_commit_id
-                            else None
-                        ),
-                        commit_map[branch.head_commit_id]
-                        if branch.head_commit_id
-                        else None,
+                        (branch_map[branch.parent_branch_id] if branch.parent_branch_id else None),
+                        (commit_map[branch.fork_commit_id] if branch.fork_commit_id else None),
+                        commit_map[branch.head_commit_id] if branch.head_commit_id else None,
                         branch.system_prompt,
                         branch.persona,
                         branch.model,
@@ -415,16 +400,8 @@ def import_space(
                         ),
                         memory.embedding_model,
                         memory.embedding_dim,
-                        (
-                            memory_map[memory.supersedes_id]
-                            if memory.supersedes_id
-                            else None
-                        ),
-                        (
-                            memory_map[memory.derived_from_id]
-                            if memory.derived_from_id
-                            else None
-                        ),
+                        (memory_map[memory.supersedes_id] if memory.supersedes_id else None),
+                        (memory_map[memory.derived_from_id] if memory.derived_from_id else None),
                         memory.deleted_at,
                         memory.created_at,
                     ),
@@ -494,9 +471,7 @@ def import_space(
                     ),
                 )
     except sqlite3.IntegrityError as exc:
-        raise ApiError(
-            422, "invalid_import", "The import violates database constraints"
-        ) from exc
+        raise ApiError(422, "invalid_import", "The import violates database constraints") from exc
 
     row = spaces_repo.require_owned(conn, space_id, owner_id)
     return ImportResultOut(

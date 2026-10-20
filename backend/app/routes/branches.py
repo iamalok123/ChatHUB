@@ -36,13 +36,9 @@ def update_branch(
     values = payload.model_dump(exclude_unset=True)
     for key in NON_NULLABLE_FIELDS:
         if key in values and values[key] is None:
-            raise ApiError(
-                422, "invalid_request", f"{key} cannot be null"
-            )
+            raise ApiError(422, "invalid_request", f"{key} cannot be null")
     if "archived" in values and branch["parent_branch_id"] is None:
-        raise ApiError(
-            409, "root_branch_protected", "The root branch cannot be archived"
-        )
+        raise ApiError(409, "root_branch_protected", "The root branch cannot be archived")
     model = values.get("model")
     if model is not None and model not in request.app.state.settings.gemini_allowed_models:
         raise ApiError(
@@ -62,9 +58,7 @@ def delete_branch(
 ) -> Response:
     branch = branches_repo.require_owned(conn, branch_id, user.id)
     if branch["parent_branch_id"] is None:
-        raise ApiError(
-            409, "root_branch_protected", "The root branch cannot be removed"
-        )
+        raise ApiError(409, "root_branch_protected", "The root branch cannot be removed")
     if branches_repo.has_children(conn, branch_id):
         branches_repo.archive(conn, branch_id)
     else:
@@ -79,10 +73,7 @@ def list_messages(
     conn: DbConn,
 ) -> list[MessageOut]:
     branch = branches_repo.require_owned(conn, branch_id, user.id)
-    return [
-        message_out(conn, branch, commit)
-        for commit in visible_messages(conn, branch)
-    ]
+    return [message_out(conn, branch, commit) for commit in visible_messages(conn, branch)]
 
 
 @router.get(

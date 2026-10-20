@@ -6,9 +6,7 @@ from app.clock import new_id, utc_now
 
 
 def get_by_email(conn: sqlite3.Connection, email: str) -> sqlite3.Row | None:
-    return conn.execute(
-        "SELECT * FROM users WHERE email = ?", (email.strip().lower(),)
-    ).fetchone()
+    return conn.execute("SELECT * FROM users WHERE email = ?", (email.strip().lower(),)).fetchone()
 
 
 def get_by_id(conn: sqlite3.Connection, user_id: str) -> sqlite3.Row | None:
@@ -36,6 +34,4 @@ def update_display_name(conn: sqlite3.Connection, user_id: str, name: str) -> No
 
 
 def update_password(conn: sqlite3.Connection, user_id: str, password_hash: str) -> None:
-    conn.execute(
-        "UPDATE users SET password_hash = ? WHERE id = ?", (password_hash, user_id)
-    )
+    conn.execute("UPDATE users SET password_hash = ? WHERE id = ?", (password_hash, user_id))

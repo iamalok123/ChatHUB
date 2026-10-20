@@ -4,11 +4,7 @@ from app.engine.context import build_system_instruction
 
 
 def test_profile_persona_and_memories_reach_the_system_instruction():
-    space = {
-        "profile_json": json.dumps(
-            {"tone": "direct", "about": "I build local-first tools."}
-        )
-    }
+    space = {"profile_json": json.dumps({"tone": "direct", "about": "I build local-first tools."})}
     branch = {
         "system_prompt": "Prefer concrete examples.",
         "persona": "A concise product partner.",

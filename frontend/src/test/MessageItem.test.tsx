@@ -1,8 +1,8 @@
 import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 
-import type { Message } from '../../api/types'
-import { MessageItem } from './MessageItem'
+import type { Message } from '../api/types'
+import { MessageItem } from '../components/chat/MessageItem'
 
 const inheritedUser: Message = {
   id: 'u1',

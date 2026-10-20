@@ -133,9 +133,7 @@ def set_override(
         )
     else:
         new_excluded = (
-            None
-            if clear_excluded
-            else (excluded if excluded is not None else existing["excluded"])
+            None if clear_excluded else (excluded if excluded is not None else existing["excluded"])
         )
         new_pinned = (
             None if clear_pinned else (pinned if pinned is not None else existing["pinned"])
@@ -144,9 +142,7 @@ def set_override(
             None
             if clear_content
             else (
-                content_override
-                if content_override is not None
-                else existing["content_override"]
+                content_override if content_override is not None else existing["content_override"]
             )
         )
         conn.execute(

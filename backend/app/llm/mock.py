@@ -50,11 +50,7 @@ STOPWORDS = {
 
 
 def _tokenize(text: str) -> list[str]:
-    return [
-        token.lower()
-        for token in WORD_RE.findall(text)
-        if token.lower() not in STOPWORDS
-    ]
+    return [token.lower() for token in WORD_RE.findall(text) if token.lower() not in STOPWORDS]
 
 
 class MockProvider(LLMProvider):
@@ -78,9 +74,7 @@ class MockProvider(LLMProvider):
         return self._stream(turns)
 
     async def _stream(self, turns: Sequence[ChatTurn]) -> AsyncIterator[StreamEvent]:
-        last_user = next(
-            (turn.text for turn in reversed(turns) if turn.role == "user"), ""
-        )
+        last_user = next((turn.text for turn in reversed(turns) if turn.role == "user"), "")
         excerpt = last_user.strip().replace("\n", " ")
         if len(excerpt) > 240:
             excerpt = excerpt[:237] + "..."

@@ -2,10 +2,10 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { Branch, Memory, MemoryProposal } from '../../api/types'
-import { useUiStore } from '../../store/ui'
-import { useWorkspaceStore } from '../../store/workspace'
-import { MemoryPanel } from './MemoryPanel'
+import type { Branch, Memory, MemoryProposal } from '../api/types'
+import { useUiStore } from '../store/ui'
+import { useWorkspaceStore } from '../store/workspace'
+import { MemoryPanel } from '../components/inspector/MemoryPanel'
 
 const branch: Branch = {
   id: 'b1',

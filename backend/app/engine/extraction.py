@@ -67,9 +67,7 @@ def _proposal_payload(
         "commit_id": row["commit_id"],
         "content": row["content"],
         "kind": row["kind"] or "fact",
-        "importance": float(
-            row["importance"] if row["importance"] is not None else 0.5
-        ),
+        "importance": float(row["importance"] if row["importance"] is not None else 0.5),
         "status": row["status"],
         "reason": row["reason"] or "",
         "conflicts_with_memory_id": row["conflicts_with_memory_id"],
@@ -82,9 +80,7 @@ def _proposal_payload(
 
 
 class MemoryExtractor:
-    def __init__(
-        self, database: Database, provider: LLMProvider, settings: Settings
-    ) -> None:
+    def __init__(self, database: Database, provider: LLMProvider, settings: Settings) -> None:
         self.database = database
         self.provider = provider
         self.settings = settings
@@ -100,9 +96,7 @@ class MemoryExtractor:
         started = time.perf_counter()
         conn = self.database.connect()
         try:
-            branch = conn.execute(
-                "SELECT * FROM branches WHERE id = ?", (branch_id,)
-            ).fetchone()
+            branch = conn.execute("SELECT * FROM branches WHERE id = ?", (branch_id,)).fetchone()
             if branch is None:
                 return ExtractionResult(
                     mode="unknown",
@@ -130,12 +124,8 @@ class MemoryExtractor:
                 return ExtractionResult(
                     mode=mode,
                     status="error",
-                    operations=[
-                        {"op": "extraction_error", "code": str(code)}
-                    ],
-                    warnings=[
-                        "Memory extraction failed; the reply was kept without new memories."
-                    ],
+                    operations=[{"op": "extraction_error", "code": str(code)}],
+                    warnings=["Memory extraction failed; the reply was kept without new memories."],
                     duration_ms=int((time.perf_counter() - started) * 1000),
                 )
 
@@ -161,9 +151,7 @@ class MemoryExtractor:
 
             for index, candidate in enumerate(cleaned):
                 vector = candidate_vectors[index]
-                duplicate, conflict, similarity = self._classify(
-                    candidate, vector, comparison
-                )
+                duplicate, conflict, similarity = self._classify(candidate, vector, comparison)
                 if duplicate is not None:
                     result.operations.append(
                         {
@@ -188,8 +176,7 @@ class MemoryExtractor:
                 conflict_content = conflict.get("content") if conflict else None
                 conflict_kind = conflict.get("kind") if conflict else None
                 reason = (
-                    f"Similar to an existing {conflict_kind} memory "
-                    f"({similarity:.2f})"
+                    f"Similar to an existing {conflict_kind} memory ({similarity:.2f})"
                     if conflict is not None
                     else "New durable memory"
                 )
@@ -219,20 +206,14 @@ class MemoryExtractor:
                             "proposal_id": row["id"],
                             "content": candidate.content,
                             "kind": candidate.kind,
-                            "conflict_with": (
-                                conflict.get("id") if conflict is not None else None
-                            ),
+                            "conflict_with": (conflict.get("id") if conflict is not None else None),
                         }
                     )
                     existing_text.add(candidate.content.strip().lower())
                     continue
 
                 if mode == "auto":
-                    embedding = (
-                        to_blob(vector)
-                        if vector is not None
-                        else None
-                    )
+                    embedding = to_blob(vector) if vector is not None else None
                     row = memories_repo.create(
                         conn,
                         space_id=branch["space_id"],
@@ -245,9 +226,7 @@ class MemoryExtractor:
                         embedding_model=(
                             self.provider.embed_model if embedding is not None else None
                         ),
-                        embedding_dim=(
-                            self.provider.embed_dim if embedding is not None else None
-                        ),
+                        embedding_dim=(self.provider.embed_dim if embedding is not None else None),
                     )
                     comparison.append((dict(row), vector))
                     existing_text.add(candidate.content.strip().lower())
@@ -281,9 +260,7 @@ class MemoryExtractor:
         finally:
             conn.close()
 
-    def _clean_candidates(
-        self, candidates: list[MemoryCandidate]
-    ) -> list[MemoryCandidate]:
+    def _clean_candidates(self, candidates: list[MemoryCandidate]) -> list[MemoryCandidate]:
         cleaned: list[MemoryCandidate] = []
         seen: set[str] = set()
         limit = max(1, min(self.settings.extraction_max_candidates, 10))
@@ -297,9 +274,7 @@ class MemoryExtractor:
             seen.add(key)
             kind = candidate.kind if candidate.kind in ALLOWED_KINDS else "fact"
             importance = max(0.0, min(1.0, float(candidate.importance)))
-            cleaned.append(
-                MemoryCandidate(content=content, kind=kind, importance=importance)
-            )
+            cleaned.append(MemoryCandidate(content=content, kind=kind, importance=importance))
             if len(cleaned) >= limit:
                 break
         return cleaned

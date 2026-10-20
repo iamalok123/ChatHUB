@@ -107,13 +107,9 @@ def create_fork(
         parent_branch_id=source["id"],
         fork_commit_id=commit_id,
         system_prompt=(
-            payload.system_prompt
-            if payload.system_prompt is not None
-            else source["system_prompt"]
+            payload.system_prompt if payload.system_prompt is not None else source["system_prompt"]
         ),
-        persona=(
-            payload.persona if payload.persona is not None else source["persona"]
-        ),
+        persona=(payload.persona if payload.persona is not None else source["persona"]),
         model=payload.model if payload.model is not None else source["model"],
         thinking_level=(
             payload.thinking_level
@@ -122,9 +118,7 @@ def create_fork(
         ),
         top_k=payload.top_k if payload.top_k is not None else source["top_k"],
         memory_mode=(
-            payload.memory_mode
-            if payload.memory_mode is not None
-            else source["memory_mode"]
+            payload.memory_mode if payload.memory_mode is not None else source["memory_mode"]
         ),
     )
     if excluded or pinned or unpinned:

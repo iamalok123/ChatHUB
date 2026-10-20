@@ -2,11 +2,11 @@ import { cleanup, render, screen, waitFor, within } from '@testing-library/react
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
-import App from './App'
-import { useAuthStore } from './store/auth'
-import { useTraceStore } from './store/trace'
-import { useUiStore } from './store/ui'
-import { useWorkspaceStore } from './store/workspace'
+import App from '../App'
+import { useAuthStore } from '../store/auth'
+import { useTraceStore } from '../store/trace'
+import { useUiStore } from '../store/ui'
+import { useWorkspaceStore } from '../store/workspace'
 
 const user = {
   id: 'u1',

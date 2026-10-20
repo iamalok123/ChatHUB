@@ -42,9 +42,7 @@ def install_error_handlers(app: FastAPI) -> None:
         return exc.response()
 
     @app.exception_handler(RequestValidationError)
-    async def handle_validation_error(
-        _: Request, exc: RequestValidationError
-    ) -> JSONResponse:
+    async def handle_validation_error(_: Request, exc: RequestValidationError) -> JSONResponse:
         first = exc.errors()[0] if exc.errors() else None
         message = "Invalid request"
         if first:

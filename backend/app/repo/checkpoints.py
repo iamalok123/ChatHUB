@@ -38,9 +38,7 @@ def get(conn: sqlite3.Connection, checkpoint_id: str) -> sqlite3.Row | None:
     ).fetchone()
 
 
-def list_for_branch(
-    conn: sqlite3.Connection, branch_id: str
-) -> list[sqlite3.Row]:
+def list_for_branch(conn: sqlite3.Connection, branch_id: str) -> list[sqlite3.Row]:
     return list(
         conn.execute(
             """
@@ -52,5 +50,20 @@ def list_for_branch(
             ORDER BY checkpoints.created_at DESC, checkpoints.id DESC
             """,
             (branch_id,),
+        ).fetchall()
+    )
+
+
+def list_for_space(conn: sqlite3.Connection, space_id: str) -> list[sqlite3.Row]:
+    return list(
+        conn.execute(
+            """
+            SELECT checkpoints.*
+            FROM checkpoints
+            JOIN branches ON branches.id = checkpoints.branch_id
+            WHERE branches.space_id = ?
+            ORDER BY checkpoints.created_at ASC, checkpoints.id ASC
+            """,
+            (space_id,),
         ).fetchall()
     )

@@ -156,9 +156,7 @@ def test_overrides_are_branch_local(tree, db):
     )
     memories.set_override(db, tree.child1["id"], shared["id"], excluded=1)
 
-    assert shared["id"] not in {
-        item["id"] for item in effective_memories(db, tree.child1)
-    }
+    assert shared["id"] not in {item["id"] for item in effective_memories(db, tree.child1)}
     assert shared["id"] in {item["id"] for item in effective_memories(db, tree.main)}
     assert shared["id"] in {item["id"] for item in effective_memories(db, tree.child2)}
 
@@ -191,20 +189,12 @@ def test_parent_exclusion_can_be_reincluded_on_child(tree, db):
         content="Career goal: become a staff engineer",
     )
     memories.set_override(db, tree.main["id"], shared["id"], excluded=1)
-    assert shared["id"] not in {
-        item["id"] for item in effective_memories(db, tree.main)
-    }
-    assert shared["id"] not in {
-        item["id"] for item in effective_memories(db, tree.child1)
-    }
+    assert shared["id"] not in {item["id"] for item in effective_memories(db, tree.main)}
+    assert shared["id"] not in {item["id"] for item in effective_memories(db, tree.child1)}
 
     memories.set_override(db, tree.child1["id"], shared["id"], excluded=0)
-    assert shared["id"] in {
-        item["id"] for item in effective_memories(db, tree.child1)
-    }
-    assert shared["id"] not in {
-        item["id"] for item in effective_memories(db, tree.main)
-    }
+    assert shared["id"] in {item["id"] for item in effective_memories(db, tree.child1)}
+    assert shared["id"] not in {item["id"] for item in effective_memories(db, tree.main)}
 
 
 def test_supersede_only_hides_where_replacement_is_visible(tree, db):
@@ -242,8 +232,7 @@ def test_fork_head_preview_ignores_later_memories(tree, db):
         content="Knows about the post-fork decision",
     )
     at_fork = {
-        item["id"]
-        for item in effective_memories(db, tree.main, head_override=tree.second["id"])
+        item["id"] for item in effective_memories(db, tree.main, head_override=tree.second["id"])
     }
     current = {item["id"] for item in effective_memories(db, tree.main)}
     assert later["id"] not in at_fork
@@ -263,15 +252,9 @@ def test_anchor_sourced_memory_is_visible_on_own_branch_only(tree, db):
         source_commit_id=child_anchor["id"],
         content="Child branch starts with a goal",
     )
-    assert memory["id"] in {
-        item["id"] for item in effective_memories(db, tree.child1)
-    }
-    assert memory["id"] not in {
-        item["id"] for item in effective_memories(db, tree.main)
-    }
-    assert memory["id"] not in {
-        item["id"] for item in effective_memories(db, tree.child2)
-    }
+    assert memory["id"] in {item["id"] for item in effective_memories(db, tree.child1)}
+    assert memory["id"] not in {item["id"] for item in effective_memories(db, tree.main)}
+    assert memory["id"] not in {item["id"] for item in effective_memories(db, tree.child2)}
 
 
 def test_anchor_is_not_a_visible_message(tree, db):

@@ -53,6 +53,7 @@ type WorkspaceState = {
   upsertSpace: (space: Space) => void
   addAndSelectBranch: (branch: Branch) => void
   createSpace: (name: string, description: string) => Promise<Space>
+  createDemo: () => Promise<Space>
   importSpace: (document: unknown) => Promise<ImportResult>
   reset: () => void
 }
@@ -210,6 +211,20 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => ({
 
   createSpace: async (name, description) => {
     const space = await api.post<Space>('/spaces', { name, description })
+    writeStored(SPACE_KEY, space.id)
+    writeStored(BRANCH_KEY, null)
+    set((state) => ({
+      spaces: [space, ...state.spaces],
+      currentSpaceId: space.id,
+      currentBranchId: null,
+      branches: [],
+    }))
+    await get().loadBranches()
+    return space
+  },
+
+  createDemo: async () => {
+    const space = await api.post<Space>('/demo-space')
     writeStored(SPACE_KEY, space.id)
     writeStored(BRANCH_KEY, null)
     set((state) => ({

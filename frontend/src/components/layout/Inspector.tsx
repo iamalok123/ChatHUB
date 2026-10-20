@@ -2,14 +2,15 @@ import {
   Brain,
   GitBranch,
   Lightbulb,
+  LoaderCircle,
   Network,
   SlidersHorizontal,
   X,
 } from 'lucide-react'
+import { lazy, Suspense } from 'react'
 
 import type { Branch } from '../../api/types'
 import { cn } from '../../lib/cn'
-import { plural } from '../../lib/format'
 import { useTraceStore } from '../../store/trace'
 import type { InspectorTab } from '../../store/ui'
 import { useUiStore } from '../../store/ui'
@@ -24,6 +25,12 @@ import { PersonalizationPanel } from '../inspector/PersonalizationPanel'
 import { TracePanel } from '../inspector/TracePanel'
 import { IconButton } from '../ui/IconButton'
 
+const BranchGraph = lazy(() =>
+  import('../graph/BranchGraph').then((module) => ({
+    default: module.BranchGraph,
+  })),
+)
+
 const tabs: Array<{ id: InspectorTab; label: string; icon: typeof Brain }> = [
   { id: 'memory', label: 'Memory', icon: Brain },
   { id: 'why', label: 'Why', icon: Lightbulb },
@@ -32,68 +39,19 @@ const tabs: Array<{ id: InspectorTab; label: string; icon: typeof Brain }> = [
 ]
 
 function GraphPanel({ branch }: { branch: Branch }) {
-  const branches = useWorkspaceStore((state) => state.branches)
-  const selectBranch = useWorkspaceStore((state) => state.selectBranch)
-
-  const byParent = new Map<string | null, Branch[]>()
-  for (const item of branches) {
-    const siblings = byParent.get(item.parent_branch_id) ?? []
-    siblings.push(item)
-    byParent.set(item.parent_branch_id, siblings)
-  }
-
   return (
-    <div>
-      <div className="mb-3 px-1">
-        <p className="text-[11px] font-medium text-ink">Branch graph</p>
-        <p className="text-[10px] text-muted">
-          {plural(branches.length, 'branch', 'branches')} in this space
-        </p>
-      </div>
-      <div className="rounded-xl border border-border bg-surface p-3 shadow-soft">
-        {branches.map((item) => {
-          const siblings = byParent.get(item.parent_branch_id) ?? []
-          const index = siblings.findIndex((sibling) => sibling.id === item.id)
-          const active = item.id === branch.id
-          return (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => selectBranch(item.id)}
-              className={cn(
-                'relative flex w-full items-center gap-2 rounded-lg py-1.5 pr-2 text-left text-[11px] transition-colors',
-                active
-                  ? 'bg-accent-soft text-accent-ink'
-                  : 'text-muted hover:bg-hover hover:text-ink',
-              )}
-              style={{ paddingLeft: 8 + (item.parent_branch_id ? 16 : 0) }}
-            >
-              {item.parent_branch_id && (
-                <span
-                  className="absolute top-0 bottom-0 left-[15px] w-px bg-border"
-                  aria-hidden
-                />
-              )}
-              <span
-                className={cn(
-                  'relative z-10 size-2.5 shrink-0 rounded-full ring-2 ring-surface',
-                  active && 'ring-accent-soft',
-                )}
-                style={{ backgroundColor: item.color ?? 'var(--color-accent)' }}
-                aria-hidden
-              />
-              <span className="truncate">{item.name}</span>
-              {index === 0 && !item.parent_branch_id && (
-                <span className="ml-auto text-[9px] text-muted/70">root</span>
-              )}
-            </button>
-          )
-        })}
-      </div>
-      <p className="mt-3 px-1 text-[10px] leading-relaxed text-muted">
-        Fork points, merges, and checkpoints will appear as edges in the interactive graph.
-      </p>
-    </div>
+    <Suspense
+      fallback={
+        <div className="grid h-[300px] place-items-center rounded-xl border border-border bg-subtle/35 text-muted">
+          <div className="flex items-center gap-2 text-[11px]">
+            <LoaderCircle size={15} className="animate-spin" aria-hidden />
+            Loading the branch graph…
+          </div>
+        </div>
+      }
+    >
+      <BranchGraph spaceId={branch.space_id} />
+    </Suspense>
   )
 }
 

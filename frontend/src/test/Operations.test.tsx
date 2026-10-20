@@ -11,14 +11,14 @@ import type {
   MergeSummary,
   SyncPreview,
   SyncResult,
-} from '../../api/types'
-import { useOperationsStore } from '../../store/operations'
-import { useUiStore } from '../../store/ui'
-import { useWorkspaceStore } from '../../store/workspace'
-import { BranchMenu } from './BranchMenu'
-import { ForkDialog } from './ForkDialog'
-import { MergeDialog } from './MergeDialog'
-import { SyncDialog } from './SyncDialog'
+} from '../api/types'
+import { useOperationsStore } from '../store/operations'
+import { useUiStore } from '../store/ui'
+import { useWorkspaceStore } from '../store/workspace'
+import { BranchMenu } from '../components/operations/BranchMenu'
+import { ForkDialog } from '../components/operations/ForkDialog'
+import { MergeDialog } from '../components/operations/MergeDialog'
+import { SyncDialog } from '../components/operations/SyncDialog'
 
 const main: Branch = {
   id: 'b1',

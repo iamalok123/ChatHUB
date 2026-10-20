@@ -96,9 +96,7 @@ def effective_memories(
     visible = visible_commit_ids(conn, branch, head_override)
     raw_rows = _memories_for_commits(conn, branch["space_id"], visible)
 
-    superseded = {
-        row["supersedes_id"] for row in raw_rows if row["supersedes_id"] is not None
-    }
+    superseded = {row["supersedes_id"] for row in raw_rows if row["supersedes_id"] is not None}
     base: dict[str, dict[str, Any]] = {}
     for row in raw_rows:
         if row["id"] in superseded:
@@ -152,9 +150,7 @@ def effective_memories(
 def effective_memory_ids(
     conn: sqlite3.Connection, branch: sqlite3.Row, head_override: str | None = None
 ) -> set[str]:
-    return {
-        item["id"] for item in effective_memories(conn, branch, head_override=head_override)
-    }
+    return {item["id"] for item in effective_memories(conn, branch, head_override=head_override)}
 
 
 def require_visible_commit(
@@ -168,9 +164,7 @@ def require_visible_commit(
     return row
 
 
-def excluded_memories(
-    conn: sqlite3.Connection, branch: sqlite3.Row
-) -> list[dict[str, Any]]:
+def excluded_memories(conn: sqlite3.Connection, branch: sqlite3.Row) -> list[dict[str, Any]]:
     visible = visible_commit_ids(conn, branch)
     raw_rows = _memories_for_commits(conn, branch["space_id"], visible)
     base = {row["id"]: dict(row) for row in raw_rows}

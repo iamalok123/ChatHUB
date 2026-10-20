@@ -92,9 +92,7 @@ def test_unauthenticated_requests_are_401(client):
 
 def test_login_logout(client):
     signup(client, email="login@example.com", password="correct horse battery")
-    response = client.post(
-        "/api/auth/logout", headers=REQUEST_HEADERS
-    )
+    response = client.post("/api/auth/logout", headers=REQUEST_HEADERS)
     assert response.status_code == 204
     assert client.get("/api/auth/me").status_code == 401
 

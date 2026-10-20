@@ -27,9 +27,7 @@ async def test_mock_stream_is_labeled_and_consistent():
     assert done.completion is not None
     assert done.completion.provider == "mock"
     assert done.completion.text.startswith("[Mock mode]")
-    assert done.completion.text == "".join(
-        event.text for event in events if event.kind == "token"
-    )
+    assert done.completion.text == "".join(event.text for event in events if event.kind == "token")
     assert done.completion.usage["total_token_count"] > 0
 
 

@@ -1,6 +1,6 @@
 import { afterEach, expect, it, vi } from 'vitest'
 
-import { streamApi } from './sse'
+import { streamApi } from '../api/sse'
 
 const encoder = new TextEncoder()
 

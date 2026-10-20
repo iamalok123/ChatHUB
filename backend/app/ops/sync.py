@@ -21,9 +21,7 @@ from app.viewmodels import branch_out, memory_out
 from app.visibility import effective_memories, visible_commit_ids
 
 
-def load_parent(
-    conn: sqlite3.Connection, source: sqlite3.Row, owner_id: str
-) -> sqlite3.Row:
+def load_parent(conn: sqlite3.Connection, source: sqlite3.Row, owner_id: str) -> sqlite3.Row:
     parent_id = source["parent_branch_id"]
     if parent_id is None:
         raise ApiError(
@@ -167,12 +165,8 @@ async def sync_memories(
                     kind=item.get("kind", "fact"),
                     importance=float(item.get("importance", 0.5)),
                     embedding=to_blob(vector) if vector is not None else None,
-                    embedding_model=(
-                        provider.embed_model if vector is not None else None
-                    ),
-                    embedding_dim=(
-                        provider.embed_dim if vector is not None else None
-                    ),
+                    embedding_model=(provider.embed_model if vector is not None else None),
+                    embedding_dim=(provider.embed_dim if vector is not None else None),
                     derived_from_id=item["id"],
                     commit=False,
                 )
@@ -204,9 +198,7 @@ async def sync_memories(
     except sqlite3.IntegrityError as exc:
         raise ApiError(409, "sync_conflict", "The sync could not be persisted") from exc
 
-    updated = conn.execute(
-        "SELECT * FROM branches WHERE id = ?", (source["id"],)
-    ).fetchone()
+    updated = conn.execute("SELECT * FROM branches WHERE id = ?", (source["id"],)).fetchone()
     assert updated is not None
     return SyncResultOut(
         branch_id=source["id"],

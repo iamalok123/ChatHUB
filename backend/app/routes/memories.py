@@ -34,33 +34,23 @@ logger = logging.getLogger("branchmind.memories")
 router = APIRouter(tags=["memories"])
 
 
-def _active_branch(
-    conn: sqlite3.Connection, branch_id: str, owner_id: str
-) -> sqlite3.Row:
+def _active_branch(conn: sqlite3.Connection, branch_id: str, owner_id: str) -> sqlite3.Row:
     branch = branches_repo.require_owned(conn, branch_id, owner_id)
     if branch["archived"]:
         raise ApiError(409, "branch_archived", "This branch is archived")
     return branch
 
 
-def _visible_memory(
-    conn: sqlite3.Connection, branch: sqlite3.Row, memory_id: str
-) -> sqlite3.Row:
+def _visible_memory(conn: sqlite3.Connection, branch: sqlite3.Row, memory_id: str) -> sqlite3.Row:
     row = memories_repo.get(conn, memory_id)
-    if (
-        row is None
-        or row["space_id"] != branch["space_id"]
-        or row["deleted_at"] is not None
-    ):
+    if row is None or row["space_id"] != branch["space_id"] or row["deleted_at"] is not None:
         raise not_found()
     if row["source_commit_id"] not in visible_commit_ids(conn, branch):
         raise not_found()
     return row
 
 
-def _origin_names(
-    conn: sqlite3.Connection, items: list[dict]
-) -> dict[str, str]:
+def _origin_names(conn: sqlite3.Connection, items: list[dict]) -> dict[str, str]:
     ids = {item.get("origin_branch_id") for item in items if item.get("origin_branch_id")}
     if not ids:
         return {}
@@ -93,28 +83,16 @@ def _serialize(
     return memory_out(data, provider=provider, excluded=excluded)
 
 
-def _effective_item(
-    conn: sqlite3.Connection, branch: sqlite3.Row, memory_id: str
-) -> dict | None:
+def _effective_item(conn: sqlite3.Connection, branch: sqlite3.Row, memory_id: str) -> dict | None:
     return next(
-        (
-            item
-            for item in effective_memories(conn, branch)
-            if item["id"] == memory_id
-        ),
+        (item for item in effective_memories(conn, branch) if item["id"] == memory_id),
         None,
     )
 
 
-def _excluded_item(
-    conn: sqlite3.Connection, branch: sqlite3.Row, memory_id: str
-) -> dict | None:
+def _excluded_item(conn: sqlite3.Connection, branch: sqlite3.Row, memory_id: str) -> dict | None:
     return next(
-        (
-            item
-            for item in excluded_memories(conn, branch)
-            if item["id"] == memory_id
-        ),
+        (item for item in excluded_memories(conn, branch) if item["id"] == memory_id),
         None,
     )
 
@@ -217,11 +195,7 @@ async def update_memory(
         )
     content = payload.content if payload.content is not None else row["content"]
     kind = payload.kind if payload.kind is not None else row["kind"]
-    importance = (
-        payload.importance
-        if payload.importance is not None
-        else float(row["importance"])
-    )
+    importance = payload.importance if payload.importance is not None else float(row["importance"])
     provider = request.app.state.provider
     if content != row["content"]:
         embedding, model, dim = await _embed(provider, content)
@@ -283,9 +257,7 @@ def override_memory(
             excluded = _excluded_item(conn, branch, memory_id)
             if excluded is not None:
                 return _serialize(conn, branch, provider, excluded, excluded=True)
-            raise ApiError(
-                409, "memory_not_effective", "This memory is no longer visible"
-            )
+            raise ApiError(409, "memory_not_effective", "This memory is no longer visible")
         memories_repo.set_override(conn, branch_id, memory_id, excluded=1)
         item = _excluded_item(conn, branch, memory_id)
         if item is None:
@@ -300,9 +272,7 @@ def override_memory(
     if payload.action in {"pin", "unpin"}:
         item = _effective_item(conn, branch, memory_id)
         if item is None:
-            raise ApiError(
-                409, "memory_not_effective", "Excluded memories cannot be pinned"
-            )
+            raise ApiError(409, "memory_not_effective", "Excluded memories cannot be pinned")
         memories_repo.set_override(
             conn, branch_id, memory_id, pinned=1 if payload.action == "pin" else 0
         )
@@ -310,9 +280,7 @@ def override_memory(
         assert item is not None
         return _serialize(conn, branch, provider, item)
     if payload.content is None:
-        raise ApiError(
-            422, "invalid_request", "content is required for the edit action"
-        )
+        raise ApiError(422, "invalid_request", "content is required for the edit action")
     if _effective_item(conn, branch, memory_id) is None:
         raise ApiError(409, "memory_not_effective", "Excluded memories cannot be edited")
     memories_repo.set_override(
@@ -337,10 +305,7 @@ def list_proposals(
     conn: DbConn,
 ) -> list[ProposalOut]:
     branches_repo.require_owned(conn, branch_id, user.id)
-    return [
-        proposal_out(row)
-        for row in proposals_repo.list_for_branch(conn, branch_id)
-    ]
+    return [proposal_out(row) for row in proposals_repo.list_for_branch(conn, branch_id)]
 
 
 @router.post(
@@ -366,9 +331,7 @@ async def accept_proposal(
     importance = (
         payload.importance
         if payload.importance is not None
-        else float(
-            proposal["importance"] if proposal["importance"] is not None else 0.5
-        )
+        else float(proposal["importance"] if proposal["importance"] is not None else 0.5)
     )
     conflict_id = proposal["conflicts_with_memory_id"]
     if conflict_id and payload.resolution == "replace":
@@ -376,9 +339,7 @@ async def accept_proposal(
     elif conflict_id:
         supersedes_id = None
     elif payload.resolution == "replace":
-        raise ApiError(
-            422, "invalid_request", "replace requires a conflicting memory"
-        )
+        raise ApiError(422, "invalid_request", "replace requires a conflicting memory")
     else:
         supersedes_id = None
 
@@ -409,9 +370,7 @@ async def accept_proposal(
             commit=False,
         )
         if updated is None:
-            raise ApiError(
-                409, "proposal_resolved", "This proposal is already resolved"
-            )
+            raise ApiError(409, "proposal_resolved", "This proposal is already resolved")
     return ProposalAcceptOut(
         proposal=proposal_out(updated),
         memory=_serialize(conn, branch, provider, row),
@@ -441,7 +400,5 @@ def reject_proposal(
         resolution="rejected",
     )
     if updated is None:
-        raise ApiError(
-            409, "proposal_resolved", "This proposal is already resolved"
-        )
+        raise ApiError(409, "proposal_resolved", "This proposal is already resolved")
     return proposal_out(updated)

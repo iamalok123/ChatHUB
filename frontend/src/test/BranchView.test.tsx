@@ -2,11 +2,11 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
-import type { Branch, Message, Space } from '../../api/types'
-import { useTraceStore } from '../../store/trace'
-import { useUiStore } from '../../store/ui'
-import { useWorkspaceStore } from '../../store/workspace'
-import { BranchView } from './BranchView'
+import type { Branch, Message, Space } from '../api/types'
+import { useTraceStore } from '../store/trace'
+import { useUiStore } from '../store/ui'
+import { useWorkspaceStore } from '../store/workspace'
+import { BranchView } from '../components/layout/BranchView'
 
 const space: Space = {
   id: 's1',

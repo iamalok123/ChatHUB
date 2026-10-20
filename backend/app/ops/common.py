@@ -13,9 +13,7 @@ DUPLICATE_THRESHOLD = 0.92
 
 @dataclass
 class CopyPlan:
-    copies: list[tuple[dict[str, Any], np.ndarray | None]] = field(
-        default_factory=list
-    )
+    copies: list[tuple[dict[str, Any], np.ndarray | None]] = field(default_factory=list)
     duplicates: list[dict[str, Any]] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
 
@@ -24,9 +22,7 @@ def normalize_content(content: str) -> str:
     return " ".join(str(content).strip().lower().split())
 
 
-def stored_vector(
-    item: dict[str, Any], provider: LLMProvider
-) -> np.ndarray | None:
+def stored_vector(item: dict[str, Any], provider: LLMProvider) -> np.ndarray | None:
     blob = item.get("embedding")
     if blob is None:
         return None
@@ -75,17 +71,14 @@ async def build_copy_plan(
     except Exception as exc:
         code = getattr(exc, "code", type(exc).__name__)
         plan.warnings.append(
-            f"Candidate embeddings failed ({code}); only exact duplicate checks "
-            "were applied."
+            f"Candidate embeddings failed ({code}); only exact duplicate checks were applied."
         )
         vectors = [None for _ in candidates]
 
     comparison_vectors: list[np.ndarray | None] = [
         stored_vector(item, provider) for item in comparison
     ]
-    comparison_text = {
-        normalize_content(item.get("content", "")) for item in comparison
-    }
+    comparison_text = {normalize_content(item.get("content", "")) for item in comparison}
 
     for item, vector in zip(candidates, vectors, strict=True):
         text = normalize_content(item.get("content", ""))
@@ -105,9 +98,7 @@ async def build_copy_plan(
                 duplicate_similarity = 1.0
 
         if duplicate_id is None and vector is not None:
-            for existing, existing_vector in zip(
-                comparison, comparison_vectors, strict=True
-            ):
+            for existing, existing_vector in zip(comparison, comparison_vectors, strict=True):
                 if existing_vector is None:
                     continue
                 similarity = cosine(vector, existing_vector)

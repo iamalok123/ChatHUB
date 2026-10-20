@@ -46,9 +46,7 @@ def get_user_for_token(conn: sqlite3.Connection, token: str) -> sqlite3.Row | No
     ).fetchone()
     if row is None:
         return None
-    conn.execute(
-        "UPDATE sessions SET last_seen_at = ? WHERE id = ?", (now, row["session_id"])
-    )
+    conn.execute("UPDATE sessions SET last_seen_at = ? WHERE id = ?", (now, row["session_id"]))
     conn.commit()
     return row
 
@@ -58,9 +56,7 @@ def delete_session(conn: sqlite3.Connection, token: str) -> None:
     conn.commit()
 
 
-def delete_other_sessions(
-    conn: sqlite3.Connection, user_id: str, keep_token: str
-) -> None:
+def delete_other_sessions(conn: sqlite3.Connection, user_id: str, keep_token: str) -> None:
     conn.execute(
         "DELETE FROM sessions WHERE user_id = ? AND token_hash != ?",
         (user_id, hash_token(keep_token)),

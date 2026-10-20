@@ -237,7 +237,7 @@ function MemoryCard({
   return (
     <article
       className={cn(
-        'rounded-xl border border-border bg-surface p-2.5 shadow-soft',
+        'memory-entry rounded-xl border border-border bg-surface p-2.5 shadow-soft',
         excluded && 'border-dashed bg-subtle/55',
       )}
     >

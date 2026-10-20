@@ -1,6 +1,8 @@
 import {
   ChevronRight,
+  Command,
   Menu,
+  PanelLeft,
   PanelRight,
   Settings2,
 } from 'lucide-react'
@@ -21,6 +23,9 @@ export function WorkspaceHeader({ isMobile }: { isMobile: boolean }) {
   const branches = useWorkspaceStore((state) => state.branches)
   const selectBranch = useWorkspaceStore((state) => state.selectBranch)
   const setSidebarOpen = useUiStore((state) => state.setSidebarOpen)
+  const sidebarCollapsed = useUiStore((state) => state.sidebarCollapsed)
+  const setSidebarCollapsed = useUiStore((state) => state.setSidebarCollapsed)
+  const setPaletteOpen = useUiStore((state) => state.setPaletteOpen)
   const inspectorOpen = useUiStore((state) => state.inspectorOpen)
   const setInspectorOpen = useUiStore((state) => state.setInspectorOpen)
   const setSettingsOpen = useUiStore((state) => state.setSettingsOpen)
@@ -94,6 +99,20 @@ export function WorkspaceHeader({ isMobile }: { isMobile: boolean }) {
       </div>
 
       <div className="flex shrink-0 items-center gap-0.5">
+        {!isMobile && (
+          <IconButton
+            label={sidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'}
+            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+          >
+            <PanelLeft size={17} aria-hidden />
+          </IconButton>
+        )}
+        <IconButton
+          label="Open command palette"
+          onClick={() => setPaletteOpen(true)}
+        >
+          <Command size={17} aria-hidden />
+        </IconButton>
         <IconButton
           label="Open settings"
           onClick={() => setSettingsOpen(true)}

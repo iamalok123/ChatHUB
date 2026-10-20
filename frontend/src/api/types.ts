@@ -134,6 +134,7 @@ export type AssistantTrace = {
   version: number
   provider: string
   mock: boolean
+  demo?: boolean
   model: string
   thinking_level: string
   thinking_summary: string | null
@@ -365,6 +366,51 @@ export type Checkpoint = {
   commit_role: string
   preview: string
   created_at: string
+}
+
+export type GraphCheckpoint = {
+  id: string
+  branch_id: string
+  commit_id: string
+  name: string
+  created_at: string
+}
+
+export type GraphEdge = {
+  id: string
+  source_branch_id: string
+  target_branch_id: string
+  kind: 'fork' | 'merge' | 'sync'
+  commit_id: string
+  created_at: string
+}
+
+export type SpaceGraph = {
+  branches: Branch[]
+  edges: GraphEdge[]
+  checkpoints: GraphCheckpoint[]
+}
+
+export type MemoryChange = {
+  before: Memory
+  after: Memory
+}
+
+export type SpaceDiff = {
+  branch_id: string
+  against_branch_id: string
+  against_name: string
+  baseline_commit_id: string
+  added: Memory[]
+  removed: Memory[]
+  changed: MemoryChange[]
+  messages_added: Message[]
+  messages_upstream: Message[]
+  added_count: number
+  removed_count: number
+  changed_count: number
+  messages_added_count: number
+  messages_upstream_count: number
 }
 
 export type ImportResult = {

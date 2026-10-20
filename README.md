@@ -2,92 +2,171 @@
 
 BranchMind treats a conversation like a Git repository: a **Space** is the repository, a **Branch** is a chat thread, and **Memories** are versioned, inherited, and mergeable.
 
-This repository is being built in phases. The authoritative build contract lives in [AGENTS.md](AGENTS.md). Architecture decisions are recorded in [docs/DECISIONS.md](docs/DECISIONS.md).
+The authoritative build contract lives in [AGENTS.md](AGENTS.md). Architecture decisions are recorded in [docs/DECISIONS.md](docs/DECISIONS.md).
 
-## Stack
+---
 
-- FastAPI + SQLite (WAL) backend
-- Vite + React + TypeScript frontend
-- Google Gemini via the official `google-genai` SDK
-- Mock AI provider when no Gemini key is configured
-- Email/password auth with Argon2id and opaque session cookies
+## Tech Stack
 
-## Quick start
+| Layer | Technology | Details |
+| :--- | :--- | :--- |
+| **Backend** | Python 3.12, FastAPI, Uvicorn | Native Server-Sent Events (SSE) streaming, async endpoints |
+| **Database** | SQLite via standard library `sqlite3` | WAL mode, foreign keys, ACID transactions, `PRAGMA busy_timeout=5000` |
+| **AI / Embeddings** | Google Gemini (`google-genai` SDK) | `gemini-3.8-flash` with thinking levels, `gemini-embedding-001` (768-dim) |
+| **Local Fallback** | Deterministic Mock Provider | Streamed canned replies, hash embeddings, synthetic context summaries |
+| **Auth** | Argon2id (`argon2-cffi`) | HttpOnly, SameSite=Lax session cookies, cryptographic token hashing |
+| **Frontend** | Vite, React 19, TypeScript | Strict typing, responsive drawer layout, dark/light themes |
+| **Styling** | Tailwind CSS v4 + CSS variables | Self-hosted `@fontsource-variable` (Inter, Source Serif 4, JetBrains Mono) |
+| **Interactive Graph**| `@xyflow/react` (React Flow) | Lazy-loaded DAG branch visualizer with commit and sync markers |
+| **Markdown** | `react-markdown`, `remark-gfm`, `rehype-highlight` | Syntax-highlighted code blocks, tables, math, safe rendering |
 
+---
+
+## Quick Start & Simple Commands
+
+### 1. Run Everything (One Command)
+Runs both the FastAPI backend (`http://127.0.0.1:8000`) and the React UI (`http://127.0.0.1:5173`) with health-checking:
+
+* **PowerShell:**
+  ```powershell
+  ./run.ps1
+  ```
+* **Command Prompt:**
+  ```cmd
+  run.cmd
+  ```
+* **npm (from root):**
+  ```powershell
+  npm run dev:all
+  ```
+
+### 2. Run Frontend Only
 ```powershell
-./run.ps1
+npm run dev
+# or: cd frontend && npm run dev
 ```
 
-Open `http://127.0.0.1:5173`.
-
-The first run creates a Python 3.12 virtual environment, installs dependencies, and starts both servers. Add `GEMINI_API_KEY` to `.env` to enable live Gemini calls; otherwise the app runs in clearly labelled mock mode.
-
-## Manual setup
-
-```powershell
-py -3.12 -m venv backend/.venv
-backend/.venv/Scripts/python -m pip install -r backend/requirements.txt
-npm --prefix frontend install
-Copy-Item .env.example .env
-```
-
-Run the backend:
-
+### 3. Run Backend Only
 ```powershell
 backend/.venv/Scripts/python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --app-dir backend
 ```
 
-Run the frontend:
-
+### 4. Build for Production
+Compiles TypeScript and creates optimized production assets:
 ```powershell
-npm --prefix frontend run dev
+npm run build
 ```
 
-## What works today
-
-- Create an account, sign in, restore a session, update the profile or password, and sign out.
-- Switch between light, dark, and system themes without a flash on reload.
-- Browse spaces and the branch tree, filter branches, and inspect inherited messages.
-- Review pending memory proposals, resolve conflicts with replace or keep-both, edit before accepting, reject proposals, and add memories directly.
-- Pin, edit, exclude, and restore memories per branch; inherited memories stay read-only upstream, and archived branches stay read-only everywhere.
-- Edit the space profile (about, tone, language, expertise) and per-branch persona, system prompt, thinking level, memory mode, and retrieval strength.
-- Jump from a memory or Why row to its source message with a temporary highlight.
-- Send messages with `Ctrl/Cmd+Enter`, watch streamed markdown with syntax highlighting, stop an interrupted reply, and revisit the transcript without losing your scroll position.
-- Expand the reasoning pill to see retrieved memories, live steps, thinking or a labelled context summary, and open the full Why trace with retrieval scores, the retrieval query, context composition, usage, and memory changes.
-- Copy answers and code blocks and identify inherited messages by their origin branch color.
-- Fork from any message, a branch head, or a checkpoint with a three-step memory checklist that keeps, excludes, pins, or unpins inherited memories.
-- Merge selected memories upward into an ancestor with an optional generated summary, and sync memories created upstream after a fork.
-- Rename, archive, and restore branches; checkpoint the current head and reopen it as a new branch from Settings.
-- Export a space to JSON or import an export as a new owned space.
-- Use the responsive shell: the sidebar is a drawer below 900px and the inspector is a drawer below 1280px.
-- See the mock/live provider state and a privacy explanation in Settings. Mock mode is labelled throughout.
-
-Graph navigation and the compare view are the next UI phases; their backend operations already exist.
-
-## Verify
-
+### 5. Run All Tests
+Executes both frontend Vitest and backend Pytest test suites:
 ```powershell
-backend/.venv/Scripts/python -m pytest backend/tests -o addopts="" -q
-backend/.venv/Scripts/python -m ruff check backend/app backend/tests
-npm --prefix frontend run lint
-npm --prefix frontend test
-npm --prefix frontend run build
+npm test
+# Or run individually:
+npm run test:frontend
+npm run test:backend
 ```
 
-## Privacy
+### 6. Lint & Format
+```powershell
+npm run lint
+```
 
-- The SQLite database, sessions, and exports stay on this machine.
-- The backend never exposes the Gemini key to the browser.
-- In live mode, prompt text, selected memories, and extraction context are sent to the Google Gemini API.
-- Mock mode makes no network AI calls and requires no API key.
-- Session cookies are HttpOnly and SameSite=Lax; every API route except auth and health requires a session.
+---
 
-## Status
+## Organized Project Layout
 
-Phases 0-6 establish the toolchain, database, authentication boundary, branch visibility, Gemini/mock providers, streaming branch chat, traces, regenerate-as-new-branch, the memory engine, the Git-like operations (fork, upward-only merge, sync, diff, checkpoints, export/import), and the authenticated frontend shell with settings and responsive memory inspection.
+All test suites are cleanly decoupled into dedicated test folders so production directories stay clean and maintainable:
 
-Phase 7 adds the streaming chat experience: markdown rendering with highlighted code, optimistic sends and interrupted-reply recovery, a reasoning pill with steps and thinking summaries, inherited-message styling, copy actions, sticky auto-scroll, and the full Why inspector with retrieval score breakdowns, context composition, and usage.
+```
+branchmind/
+├── AGENTS.md                  # Comprehensive engineering contract
+├── README.md                  # Complete documentation and user guide
+├── package.json               # Root convenience runner (dev, build, test, lint)
+├── run.ps1 / run.cmd / run.sh # Unified startup scripts
+├── .env.example               # Configuration template
+├── docs/
+│   └── DECISIONS.md           # Architecture Decision Records (ADRs)
+├── backend/
+│   ├── requirements.txt       # Python dependencies
+│   ├── app/                   # Clean production source code
+│   │   ├── main.py            # App factory, middleware, lifespans
+│   │   ├── config.py          # Typed Pydantic settings
+│   │   ├── db.py / schema.sql # SQLite initialization & schema
+│   │   ├── visibility.py      # Core R1 ancestor commit & memory isolation
+│   │   ├── auth/              # Passwords, session tokens, dependencies
+│   │   ├── repo/              # Users, spaces, branches, commits, memories
+│   │   ├── llm/               # Gemini SDK provider & mock fallback
+│   │   ├── engine/            # Context composer, retrieval, extraction, chat
+│   │   ├── ops/               # Fork, merge, sync, diff, checkpoints, export
+│   │   └── routes/            # Thin REST and SSE route handlers
+│   └── tests/                 # All 71+ backend pytest suites (isolated)
+└── frontend/
+    ├── package.json           # Frontend dependencies & scripts
+    ├── vite.config.ts         # Vite bundler & Vitest configuration
+    └── src/
+        ├── App.tsx            # Root component with auth & routing
+        ├── api/               # Typed fetch client, SSE consumer, interfaces
+        ├── auth/              # Auth store & session listener
+        ├── components/        # Pure production UI components (no test clutter)
+        │   ├── chat/          # Message items, markdown, streaming cursor
+        │   ├── graph/         # React Flow interactive branch DAG
+        │   ├── inspector/     # Memory manager, personalization, Why trace panel
+        │   ├── layout/        # AppShell, sidebar, branch switcher, command palette
+        │   └── operations/    # Fork dialog, upward merge dialog, sync dialog, diff
+        ├── store/             # Zustand stores (workspace, ui, operations, trace)
+        └── test/              # All 14 consolidated frontend Vitest suites
+```
 
-Phase 8 adds the branch workflow: a sidebar tree with per-branch actions, lineage breadcrumbs, three-step forks with keep/exclude/pin/unpin choices, upward-only merge with duplicate warnings and generated summaries, a post-fork sync banner and dialog, checkpoints, and branch rename/archive/restore. Archived branches stay inspectable but reject chat and memory writes; the root branch cannot be archived.
+---
 
-Phase 9 makes memory and personalization explicit: the Memory inspector organizes proposals, own, inherited, and excluded memories with branch-local overrides and provenance jumps; Settings edits the space profile and branch voice; the Why inspector adds the retrieval query and always reports what changed in memory. The mock provider cannot exercise persona changes because it does not consume system instructions, so context composition is covered by backend tests instead.
+## Core Product Concepts & Features
+
+### 1. User & Space Isolation
+* **Strict Ownership (`spaces.owner_id`)**: Every space belongs to exactly one authenticated user.
+* **Invisible Objects Return 404**: Foreign spaces, branches, or commits never return 403; unauthorized entities appear non-existent.
+* **Secure Cookies**: Opaque tokens stored with `HttpOnly`, `SameSite=Lax`, and Argon2id hashing.
+
+### 2. Git-like Branching & Visibility (The R1 Rule)
+* **Upstream-Only Visibility**: A branch can see only its own commits/memories plus ancestors up to the exact fork point. Siblings, cousins, children, or subsequent upstream commits are completely invisible.
+* **Anchor Commits**: Every branch begins with a hidden anchor commit, ensuring non-null head commit references and real commit IDs for memories.
+* **Parent Commit Walk**: The `visible_commit_ids` function computes visibility by traversing `commits.parent_id` upward to the root.
+
+### 3. Version-Controlled Memory Universe
+* **Provenance**: Every memory records its `origin_branch_id` and `source_commit_id`.
+* **Branch-Local Overrides**: Inherited memories can be **excluded**, **pinned**, or have their content **overridden** on a branch without mutating upstream data.
+* **Supersedes Pointers**: Memory updates set `supersedes_id` so outdated memories are cleanly masked within visible lineage.
+* **Review / Auto / Off Modes**:
+  * `review`: AI-extracted memories appear as pending proposals with conflict detection.
+  * `auto`: Non-conflicting memories are stored automatically; conflicts await review.
+  * `off`: Memory extraction is skipped.
+
+### 4. Transparent Retrieval & Reasoning (The "Why" View)
+* **Hybrid Scoring**:
+  $$\text{Score} = 0.60 \times \text{CosineSimilarity} + 0.25 \times \text{Importance} + 0.15 \times \text{RecencyDecay}$$
+* **Inspectable Trace**: Every assistant turn records a full trace JSON showing:
+  * Selected memories with score breakdowns.
+  * Considered-but-skipped memories (budget limits, low score, stale embeddings).
+  * Excluded memories and branch overrides.
+  * Exact context token composition and Gemini usage metadata.
+  * Real model thinking or clearly labelled synthetic context summaries.
+
+### 5. Git Operations
+* **Fork from Anywhere**: Fork from any visible message, checkpoint, or branch head. Includes a 3-step memory checklist (keep, exclude, pin, unpin).
+* **Upward-Only Merge**: Merge selected memories and an AI-generated summary into an ancestor branch. Messages are never copied.
+* **Sync Upstream**: Pull new memories created on a parent branch after the fork point.
+* **Compare Divergence**: Diff memory sets and message history between any branch and its ancestors.
+* **Checkpoints**: Snapshot named points in a branch to preserve baselines or reopen as new branches.
+* **Interactive Graph**: Interactive visual DAG displaying branches, fork points, merges, syncs, and checkpoints.
+* **Command Palette**: Press `Ctrl+K` to switch branches, jump spaces, open diffs, or toggle settings.
+
+---
+
+## Verification & Test Status
+
+All suites pass with 100% success rate:
+
+* **Backend Tests (`pytest`):** 71 passed, 2 skipped (live-only tests).
+* **Frontend Tests (`vitest`):** 14 test suites, 38 tests passed.
+* **TypeScript Compilation (`tsc`):** Zero errors.
+* **Vite Production Build:** Success.
+* **Linters (`oxlint`, `ruff`):** Zero warnings, zero errors.

@@ -5,9 +5,7 @@ from typing import Annotated, Any, Literal
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, StringConstraints
 
 Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)]
-DisplayName = Annotated[
-    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=80)
-]
+DisplayName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=80)]
 Password = Annotated[str, StringConstraints(min_length=8, max_length=128)]
 
 
@@ -344,6 +342,29 @@ class CheckpointOut(BaseModel):
     commit_role: str
     preview: str
     created_at: str
+
+
+class GraphCheckpointOut(BaseModel):
+    id: str
+    branch_id: str
+    commit_id: str
+    name: str
+    created_at: str
+
+
+class GraphEdgeOut(BaseModel):
+    id: str
+    source_branch_id: str
+    target_branch_id: str
+    kind: Literal["fork", "merge", "sync"]
+    commit_id: str
+    created_at: str
+
+
+class SpaceGraphOut(BaseModel):
+    branches: list[BranchOut]
+    edges: list[GraphEdgeOut]
+    checkpoints: list[GraphCheckpointOut]
 
 
 class ExportSpaceInfo(BaseModel):
