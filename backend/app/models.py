@@ -203,6 +203,242 @@ class ProposalAcceptOut(BaseModel):
     memory: MemoryOut
 
 
+class ForkRequest(StrictModel):
+    name: Name | None = None
+    commit_id: str | None = None
+    persona: Annotated[str, StringConstraints(max_length=8000)] | None = None
+    system_prompt: Annotated[str, StringConstraints(max_length=8000)] | None = None
+    model: Annotated[str, StringConstraints(max_length=120)] | None = None
+    thinking_level: Literal["low", "medium", "high"] | None = None
+    top_k: Annotated[int, Field(ge=1, le=20)] | None = None
+    memory_mode: Literal["review", "auto", "off"] | None = None
+    exclude_memory_ids: list[str] = Field(default_factory=list)
+    pin_memory_ids: list[str] = Field(default_factory=list)
+
+
+class ForkPreviewOut(BaseModel):
+    source_branch_id: str
+    commit_id: str
+    commit_role: str
+    memories: list[MemoryOut]
+    pinned_count: int
+
+
+class DuplicateMatchOut(BaseModel):
+    memory_id: str
+    duplicate_of_memory_id: str
+    similarity: float
+
+
+class MergePreviewOut(BaseModel):
+    source_branch_id: str
+    target_branch_id: str
+    target_name: str
+    target_head_commit_id: str | None
+    memories: list[MemoryOut]
+    duplicates: list[DuplicateMatchOut]
+    warnings: list[str]
+
+
+class MergeRequest(StrictModel):
+    target_branch_id: str
+    memory_ids: list[str] = Field(default_factory=list)
+    summary: Annotated[str, StringConstraints(max_length=8000)] = ""
+    expected_head_id: str | None = None
+
+
+class MergeResultOut(BaseModel):
+    source_branch_id: str
+    target_branch_id: str
+    merge_commit_id: str
+    copied_count: int
+    duplicates: list[DuplicateMatchOut]
+    warnings: list[str]
+    target: BranchOut
+
+
+class MergeSummaryRequest(StrictModel):
+    target_branch_id: str
+    memory_ids: list[str] = Field(min_length=1)
+
+
+class MergeSummaryOut(BaseModel):
+    summary: str
+    provider: str
+    mock: bool
+    warning: str | None = None
+
+
+class SyncPreviewOut(BaseModel):
+    branch_id: str
+    parent_branch_id: str
+    parent_name: str
+    parent_head_commit_id: str | None
+    memories: list[MemoryOut]
+    duplicates: list[DuplicateMatchOut]
+    warnings: list[str]
+
+
+class SyncRequest(StrictModel):
+    memory_ids: list[str] = Field(min_length=1)
+    expected_head_id: str | None = None
+
+
+class SyncResultOut(BaseModel):
+    branch_id: str
+    parent_branch_id: str
+    sync_commit_id: str
+    copied_count: int
+    duplicates: list[DuplicateMatchOut]
+    warnings: list[str]
+    branch: BranchOut
+
+
+class MemoryChangeOut(BaseModel):
+    before: MemoryOut
+    after: MemoryOut
+
+
+class DiffOut(BaseModel):
+    branch_id: str
+    against_branch_id: str
+    against_name: str
+    baseline_commit_id: str
+    added: list[MemoryOut]
+    removed: list[MemoryOut]
+    changed: list[MemoryChangeOut]
+    messages_added: list[MessageOut]
+    messages_upstream: list[MessageOut]
+    added_count: int
+    removed_count: int
+    changed_count: int
+    messages_added_count: int
+    messages_upstream_count: int
+
+
+class CheckpointCreate(StrictModel):
+    name: Name
+    commit_id: str | None = None
+
+
+class CheckpointOut(BaseModel):
+    id: str
+    branch_id: str
+    commit_id: str
+    name: str
+    commit_role: str
+    preview: str
+    created_at: str
+
+
+class ExportSpaceInfo(BaseModel):
+    name: str
+    description: str
+    profile: dict[str, Any]
+    created_at: str
+
+
+class ExportBranch(BaseModel):
+    id: str
+    name: str
+    parent_branch_id: str | None
+    fork_commit_id: str | None
+    head_commit_id: str | None
+    system_prompt: str
+    persona: str
+    model: str | None
+    thinking_level: str
+    top_k: int
+    memory_mode: str
+    color: str | None
+    archived: bool
+    created_at: str
+
+
+class ExportCommit(BaseModel):
+    id: str
+    branch_id: str
+    parent_id: str | None
+    role: str
+    content: str
+    thinking: str | None
+    trace_json: str | None
+    status: str
+    provider_parts_json: str | None
+    thought_signature: str | None
+    usage_json: str | None
+    source_branch_id: str | None
+    created_at: str
+
+
+class ExportMemory(BaseModel):
+    id: str
+    origin_branch_id: str
+    source_commit_id: str
+    content: str
+    kind: str
+    importance: float
+    embedding: str | None
+    embedding_model: str | None
+    embedding_dim: int | None
+    supersedes_id: str | None
+    derived_from_id: str | None
+    deleted_at: str | None
+    created_at: str
+
+
+class ExportOverride(BaseModel):
+    branch_id: str
+    memory_id: str
+    excluded: int | None
+    pinned: int | None
+    content_override: str | None
+    updated_at: str
+
+
+class ExportProposal(BaseModel):
+    id: str
+    branch_id: str
+    commit_id: str
+    content: str
+    kind: str | None
+    importance: float | None
+    conflicts_with_memory_id: str | None
+    reason: str | None
+    status: str
+    resolution: str | None
+    accepted_memory_id: str | None
+    resolved_at: str | None
+    created_at: str
+
+
+class ExportCheckpoint(BaseModel):
+    id: str
+    branch_id: str
+    commit_id: str
+    name: str
+    created_at: str
+
+
+class SpaceExport(BaseModel):
+    version: Literal[1]
+    exported_at: str
+    space: ExportSpaceInfo
+    branches: list[ExportBranch]
+    commits: list[ExportCommit]
+    memories: list[ExportMemory]
+    overrides: list[ExportOverride]
+    proposals: list[ExportProposal]
+    checkpoints: list[ExportCheckpoint]
+
+
+class ImportResultOut(BaseModel):
+    space: SpaceOut
+    branch_count: int
+    commit_count: int
+    memory_count: int
+
+
 class UserRecord(BaseModel):
     id: str
     email: str
