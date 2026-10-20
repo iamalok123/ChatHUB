@@ -166,11 +166,12 @@ branchmind/
 
 All suites pass with 100% success rate:
 
-* **Backend Tests (`pytest`):** 71 passed, 2 skipped (live-only tests).
+* **Backend Tests (`pytest`):** 96 passed, 2 skipped (including 6 automated hardening & chaos evals).
 * **Frontend Tests (`vitest`):** 14 test suites, 38 tests passed.
 * **TypeScript Compilation (`tsc`):** Zero errors.
 * **Vite Production Build:** Success.
 * **Linters (`oxlint`, `ruff`):** Zero warnings, zero errors.
+* **Hardening Audit (`docs/AUDIT.md`):** 10/10 findings resolved and verified.
 
 ---
 

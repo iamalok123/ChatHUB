@@ -41,7 +41,7 @@ if (-not (Test-Path -LiteralPath (Join-Path $PSScriptRoot "frontend/node_modules
 
 New-Item -ItemType Directory -Force -Path (Join-Path $PSScriptRoot "data") | Out-Null
 
-Write-Host "Starting BranchMind backend on http://127.0.0.1:$backendPort ..."
+Write-Host "Starting ChatHUB backend on http://127.0.0.1:$backendPort ..."
 $backend = Start-Process -FilePath $venvPython `
     -ArgumentList @("-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", "$backendPort", "--app-dir", "backend") `
     -WorkingDirectory $PSScriptRoot `
@@ -65,7 +65,7 @@ try {
         throw "Backend did not become healthy. Check the output above."
     }
 
-    Write-Host "Starting BranchMind UI on http://127.0.0.1:$frontendPort ..."
+    Write-Host "Starting ChatHUB UI on http://127.0.0.1:$frontendPort ..."
     Write-Host "Press Ctrl+C to stop both servers."
     & npm --prefix frontend run dev
 }
