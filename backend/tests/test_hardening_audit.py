@@ -169,3 +169,29 @@ def test_canary_secret_never_leaks_to_sibling(hardening_client: TestClient):
     assert mem_b_res.status_code == 200
     b_contents = [m["content"] for m in mem_b_res.json()["memories"]]
     assert not any(canary_token in c for c in b_contents), "Canary secret leaked to sibling branch!"
+
+
+def test_concurrent_chat_lock_returns_409(hardening_client: TestClient):
+    """CON-001: Concurrent generation requests on the same branch must return 409 Conflict."""
+    space_res = hardening_client.post(
+        "/api/spaces",
+        json={"name": "Lock Space"},
+        headers={REQUEST_HEADER: "1"},
+    )
+    branch_id = hardening_client.get(f"/api/spaces/{space_res.json()['id']}/branches").json()[0][
+        "id"
+    ]
+
+    from app.routes.chat import _ACTIVE_GENERATIONS
+
+    _ACTIVE_GENERATIONS.add(branch_id)
+    try:
+        res = hardening_client.post(
+            f"/api/branches/{branch_id}/chat",
+            json={"message": "Concurrent test message"},
+            headers={REQUEST_HEADER: "1"},
+        )
+        assert res.status_code == 409, f"Expected 409 Conflict, got {res.status_code}"
+        assert res.json().get("error", {}).get("code") == "generation_in_progress"
+    finally:
+        _ACTIVE_GENERATIONS.discard(branch_id)

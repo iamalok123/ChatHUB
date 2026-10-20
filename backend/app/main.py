@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+import contextlib
 import logging
 from contextlib import asynccontextmanager
 from typing import Any
@@ -13,6 +15,7 @@ from app.auth.ratelimit import SlidingWindowLimiter
 from app.auth.sessions import purge_expired
 from app.config import REQUEST_HEADER, Settings
 from app.db import Database
+from app.engine.outbox import OutboxProcessor
 from app.errors import install_error_handlers
 from app.llm import build_provider
 from app.llm.qdrant import QdrantStore
@@ -57,9 +60,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "postgresql" if settings.is_postgres else "sqlite",
             "connected" if qdrant.is_enabled else "in-memory/local",
         )
+        outbox_task = asyncio.create_task(OutboxProcessor.run_worker(database, qdrant))
         try:
             yield
         finally:
+            outbox_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await outbox_task
             await provider.close()
 
     app = FastAPI(

@@ -25,6 +25,8 @@ SSE_HEADERS = {
     "X-Accel-Buffering": "no",
 }
 
+_ACTIVE_GENERATIONS: set[str] = set()
+
 
 def _active_branch(
     conn: sqlite3.Connection, branch_id: str, user_id: str
@@ -99,6 +101,7 @@ def _stream(
     retrieval: RetrievalResult,
     regenerated_from: str | None = None,
     branch_event: dict[str, str] | None = None,
+    branch_id_to_unlock: str | None = None,
 ) -> StreamingResponse:
     streamer = ChatStreamer(
         database=request.app.state.database,
@@ -120,8 +123,17 @@ def _stream(
             request.app.state.settings,
         ),
     )
+
+    async def _locked_stream():
+        try:
+            async for chunk in streamer.stream():
+                yield chunk
+        finally:
+            if branch_id_to_unlock:
+                _ACTIVE_GENERATIONS.discard(branch_id_to_unlock)
+
     return StreamingResponse(
-        streamer.stream(),
+        _locked_stream(),
         media_type="text/event-stream",
         headers=SSE_HEADERS,
     )
@@ -134,92 +146,132 @@ async def chat(
     request: Request,
     user: CurrentUser,
 ) -> StreamingResponse:
-    conn = request.app.state.database.connect()
-    try:
-        branch, space = _active_branch(conn, branch_id, user.id)
-        current_head = branch["head_commit_id"]
-        if payload.expected_head_id is not None and payload.expected_head_id != current_head:
-            raise ApiError(
-                409,
-                "head_conflict",
-                "The branch changed since you loaded it. Refresh and try again.",
-            )
-        history = visible_messages(conn, branch)
-        try:
-            user_commit = commits_repo.append_at_head(
-                conn,
-                space_id=branch["space_id"],
-                branch_id=branch_id,
-                expected_head_id=current_head,
-                role="user",
-                content=payload.message,
-            )
-        except commits_repo.HeadConflict as exc:
-            raise ApiError(
-                409,
-                "head_conflict",
-                "The branch changed while sending. Refresh and try again.",
-            ) from exc
-        provider = request.app.state.provider
-        settings = request.app.state.settings
-        qdrant = getattr(request.app.state, "qdrant", None)
-        retrieval = await retrieve_memories(
-            conn,
-            branch,
-            user_text=payload.message,
-            previous_assistant_text=_previous_assistant(history),
-            provider=provider,
-            top_k=branch["top_k"],
-            memory_budget=settings.memory_token_budget,
-            qdrant=qdrant,
+    if branch_id in _ACTIVE_GENERATIONS:
+        raise ApiError(
+            409,
+            "generation_in_progress",
+            "A response is already generating on this branch. Wait for it to finish.",
         )
-        context, compose_step = _compose(
+    _ACTIVE_GENERATIONS.add(branch_id)
+
+    try:
+        conn = request.app.state.database.connect()
+        try:
+            branch, space = _active_branch(conn, branch_id, user.id)
+
+            idempotency_key = request.headers.get("Idempotency-Key") or request.headers.get(
+                "X-Idempotency-Key"
+            )
+            if idempotency_key:
+                existing = conn.execute(
+                    "SELECT id, status_code FROM idempotency_keys WHERE key = ? AND user_id = ?",
+                    (idempotency_key, user.id),
+                ).fetchone()
+                if existing:
+                    raise ApiError(
+                        409,
+                        "idempotent_request_in_progress",
+                        "A request with this Idempotency-Key has already been submitted",
+                    )
+                from app.clock import new_id, utc_now
+
+                conn.execute(
+                    """
+                    INSERT INTO idempotency_keys(
+                        id, user_id, key, status_code, response_json, created_at
+                    ) VALUES (?, ?, ?, 200, '{}', ?)
+                    """,
+                    (new_id(), user.id, idempotency_key, utc_now()),
+                )
+                conn.commit()
+
+            current_head = branch["head_commit_id"]
+            if payload.expected_head_id is not None and payload.expected_head_id != current_head:
+                raise ApiError(
+                    409,
+                    "head_conflict",
+                    "The branch changed since you loaded it. Refresh and try again.",
+                )
+            history = visible_messages(conn, branch)
+            try:
+                user_commit = commits_repo.append_at_head(
+                    conn,
+                    space_id=branch["space_id"],
+                    branch_id=branch_id,
+                    expected_head_id=current_head,
+                    role="user",
+                    content=payload.message,
+                )
+            except commits_repo.HeadConflict as exc:
+                raise ApiError(
+                    409,
+                    "head_conflict",
+                    "The branch changed while sending. Refresh and try again.",
+                ) from exc
+            provider = request.app.state.provider
+            settings = request.app.state.settings
+            qdrant = getattr(request.app.state, "qdrant", None)
+            retrieval = await retrieve_memories(
+                conn,
+                branch,
+                user_text=payload.message,
+                previous_assistant_text=_previous_assistant(history),
+                provider=provider,
+                top_k=branch["top_k"],
+                memory_budget=settings.memory_token_budget,
+                qdrant=qdrant,
+            )
+            context, compose_step = _compose(
+                request=request,
+                branch=branch,
+                space=space,
+                history=history,
+                current_user_text=payload.message,
+                retrieval=retrieval,
+            )
+            steps: list[dict[str, object]] = [
+                {
+                    "phase": "retrieve",
+                    "status": "done",
+                    "duration_ms": retrieval.duration_ms,
+                    "payload": retrieval.step_payload(),
+                },
+                compose_step,
+            ]
+            try:
+                assistant_commit = commits_repo.append_at_head(
+                    conn,
+                    space_id=branch["space_id"],
+                    branch_id=branch_id,
+                    expected_head_id=user_commit["id"],
+                    role="assistant",
+                    content="",
+                    status="streaming",
+                )
+            except commits_repo.HeadConflict as exc:
+                raise ApiError(
+                    409,
+                    "head_conflict",
+                    "The branch changed while sending. Refresh and try again.",
+                ) from exc
+        finally:
+            conn.close()
+
+        return _stream(
             request=request,
             branch=branch,
             space=space,
-            history=history,
+            context=context,
+            steps=steps,
+            assistant_commit_id=assistant_commit["id"],
+            current_user_commit_id=user_commit["id"],
             current_user_text=payload.message,
             retrieval=retrieval,
+            branch_id_to_unlock=branch_id,
         )
-        steps: list[dict[str, object]] = [
-            {
-                "phase": "retrieve",
-                "status": "done",
-                "duration_ms": retrieval.duration_ms,
-                "payload": retrieval.step_payload(),
-            },
-            compose_step,
-        ]
-        try:
-            assistant_commit = commits_repo.append_at_head(
-                conn,
-                space_id=branch["space_id"],
-                branch_id=branch_id,
-                expected_head_id=user_commit["id"],
-                role="assistant",
-                content="",
-                status="streaming",
-            )
-        except commits_repo.HeadConflict as exc:
-            raise ApiError(
-                409,
-                "head_conflict",
-                "The branch changed while sending. Refresh and try again.",
-            ) from exc
-    finally:
-        conn.close()
-
-    return _stream(
-        request=request,
-        branch=branch,
-        space=space,
-        context=context,
-        steps=steps,
-        assistant_commit_id=assistant_commit["id"],
-        current_user_commit_id=user_commit["id"],
-        current_user_text=payload.message,
-        retrieval=retrieval,
-    )
+    except Exception:
+        _ACTIVE_GENERATIONS.discard(branch_id)
+        raise
 
 
 @router.post("/branches/{branch_id}/regenerate/{commit_id}")
