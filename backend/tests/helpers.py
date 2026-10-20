@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 import sqlite3
+from typing import Any
 
 from fastapi.testclient import TestClient
 
@@ -48,6 +50,71 @@ def append(conn: sqlite3.Connection, branch_id: str, role: str, content: str):
 
 def refresh_branch(conn: sqlite3.Connection, branch_id: str):
     return conn.execute("SELECT * FROM branches WHERE id = ?", (branch_id,)).fetchone()
+
+
+def parse_sse(lines: Any) -> list[dict[str, Any]]:
+    events: list[dict[str, Any]] = []
+    event_name: str | None = None
+    data: list[str] = []
+    for raw in lines:
+        line = raw if isinstance(raw, str) else raw.decode("utf-8")
+        if not line:
+            if event_name is not None:
+                payload = "\n".join(data)
+                events.append(
+                    {
+                        "event": event_name,
+                        "data": json.loads(payload) if payload else {},
+                    }
+                )
+            event_name = None
+            data = []
+            continue
+        if line.startswith(":"):
+            continue
+        if line.startswith("event:"):
+            event_name = line.split(":", 1)[1].strip()
+        elif line.startswith("data:"):
+            data.append(line.split(":", 1)[1].lstrip())
+    if event_name is not None:
+        payload = "\n".join(data)
+        events.append(
+            {"event": event_name, "data": json.loads(payload) if payload else {}}
+        )
+    return events
+
+
+def stream_chat(
+    client: TestClient,
+    branch_id: str,
+    message: str,
+    expected_head_id: str | None = None,
+) -> tuple[int, list[dict[str, Any]]]:
+    payload: dict[str, Any] = {"message": message}
+    if expected_head_id is not None:
+        payload["expected_head_id"] = expected_head_id
+    with client.stream(
+        "POST",
+        f"/api/branches/{branch_id}/chat",
+        json=payload,
+        headers=REQUEST_HEADERS,
+    ) as response:
+        status = response.status_code
+        events = parse_sse(response.iter_lines())
+    return status, events
+
+
+def stream_regenerate(
+    client: TestClient, branch_id: str, commit_id: str
+) -> tuple[int, list[dict[str, Any]]]:
+    with client.stream(
+        "POST",
+        f"/api/branches/{branch_id}/regenerate/{commit_id}",
+        headers=REQUEST_HEADERS,
+    ) as response:
+        status = response.status_code
+        events = parse_sse(response.iter_lines())
+    return status, events
 
 
 def fork(conn: sqlite3.Connection, parent_branch_id: str, fork_commit_id: str, name: str):

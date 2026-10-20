@@ -52,4 +52,4 @@ npm --prefix frontend run dev
 
 ## Status
 
-Phase 0 and Phase 1 establish the toolchain, database, authentication boundary, and branch visibility core. Chat, memory, Git-like operations, and the full UI follow in later phases.
+Phases 0-3 establish the toolchain, database, authentication boundary, branch visibility, Gemini/mock providers, streaming branch chat, traces, and regenerate-as-new-branch. Memory, Git-like operations, and the full UI follow in later phases.

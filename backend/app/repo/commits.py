@@ -6,8 +6,76 @@ from typing import Any
 from app.clock import new_id, utc_now
 
 
+class HeadConflict(Exception):
+    def __init__(self, branch_id: str, current_head_id: str | None) -> None:
+        super().__init__("Branch head changed")
+        self.branch_id = branch_id
+        self.current_head_id = current_head_id
+
+
 def get(conn: sqlite3.Connection, commit_id: str) -> sqlite3.Row | None:
     return conn.execute("SELECT * FROM commits WHERE id = ?", (commit_id,)).fetchone()
+
+
+def append_at_head(
+    conn: sqlite3.Connection,
+    *,
+    space_id: str,
+    branch_id: str,
+    expected_head_id: str | None,
+    role: str,
+    content: str,
+    status: str = "complete",
+) -> sqlite3.Row:
+    commit_id = new_id()
+    now = utc_now()
+    try:
+        with conn:
+            conn.execute(
+                """
+                INSERT INTO commits(
+                    id, space_id, branch_id, parent_id, role, content, status, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    commit_id,
+                    space_id,
+                    branch_id,
+                    expected_head_id,
+                    role,
+                    content,
+                    status,
+                    now,
+                ),
+            )
+            if expected_head_id is None:
+                cursor = conn.execute(
+                    """
+                    UPDATE branches SET head_commit_id = ?
+                    WHERE id = ? AND head_commit_id IS NULL
+                    """,
+                    (commit_id, branch_id),
+                )
+            else:
+                cursor = conn.execute(
+                    """
+                    UPDATE branches SET head_commit_id = ?
+                    WHERE id = ? AND head_commit_id = ?
+                    """,
+                    (commit_id, branch_id, expected_head_id),
+                )
+            if cursor.rowcount != 1:
+                raise HeadConflict(branch_id, None)
+    except HeadConflict:
+        current = conn.execute(
+            "SELECT head_commit_id FROM branches WHERE id = ?", (branch_id,)
+        ).fetchone()
+        raise HeadConflict(
+            branch_id, current["head_commit_id"] if current else None
+        ) from None
+    row = get(conn, commit_id)
+    assert row is not None
+    return row
 
 
 def create(

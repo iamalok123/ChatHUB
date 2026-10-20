@@ -83,3 +83,9 @@ This file records decisions and deviations from the original local-only, Ollama-
 **Decision:** The mock provider returns deterministic embeddings and rule-based extraction candidates so auth, branching, memory proposals, and the full UI can be tested without a key.
 
 **Reason:** Tests and demos must not depend on external quotas.
+
+## D-014: Transient `streaming` commit status
+
+**Decision:** Assistant commits are inserted with `status=streaming` before the provider call and finalized as `complete`, `partial`, or `error`. The transient value is never used in a final trace.
+
+**Reason:** The UI and API need to distinguish an in-flight reply from an interrupted one. A placeholder row also guarantees a stable assistant commit id for partial persistence and SSE error reporting.

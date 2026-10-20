@@ -5,9 +5,8 @@ from fastapi import APIRouter, Response
 from app.auth.deps import CurrentUser, DbConn
 from app.models import BranchOut, SpaceCreate, SpaceOut, SpaceUpdate
 from app.repo import branches as branches_repo
-from app.repo import commits as commits_repo
 from app.repo import spaces as spaces_repo
-from app.visibility import effective_memories, visible_commit_chain
+from app.viewmodels import branch_out
 
 router = APIRouter(tags=["spaces"])
 
@@ -74,29 +73,7 @@ def list_branches(
     conn: DbConn,
 ) -> list[BranchOut]:
     spaces_repo.require_owned(conn, space_id, user.id)
-    result: list[BranchOut] = []
-    for branch in branches_repo.list_for_space(conn, space_id):
-        visible_ids = [row["id"] for row in visible_commit_chain(conn, branch)]
-        result.append(
-            BranchOut(
-                id=branch["id"],
-                space_id=branch["space_id"],
-                name=branch["name"],
-                parent_branch_id=branch["parent_branch_id"],
-                fork_commit_id=branch["fork_commit_id"],
-                head_commit_id=branch["head_commit_id"],
-                system_prompt=branch["system_prompt"] or "",
-                persona=branch["persona"] or "",
-                model=branch["model"],
-                thinking_level=branch["thinking_level"],
-                top_k=branch["top_k"],
-                memory_mode=branch["memory_mode"],
-                color=branch["color"],
-                archived=bool(branch["archived"]),
-                created_at=branch["created_at"],
-                is_root=branch["parent_branch_id"] is None,
-                message_count=commits_repo.count_messages(conn, visible_ids),
-                memory_count=len(effective_memories(conn, branch)),
-            )
-        )
-    return result
+    return [
+        branch_out(conn, branch)
+        for branch in branches_repo.list_for_space(conn, space_id)
+    ]

@@ -111,6 +111,36 @@ def create(
     return branch, anchor
 
 
+def has_children(conn: sqlite3.Connection, branch_id: str) -> bool:
+    row = conn.execute(
+        "SELECT 1 FROM branches WHERE parent_branch_id = ? LIMIT 1", (branch_id,)
+    ).fetchone()
+    return row is not None
+
+
+def archive(conn: sqlite3.Connection, branch_id: str) -> None:
+    with conn:
+        conn.execute("UPDATE branches SET archived = 1 WHERE id = ?", (branch_id,))
+
+
+def delete(conn: sqlite3.Connection, branch_id: str) -> None:
+    with conn:
+        conn.execute("DELETE FROM branches WHERE id = ?", (branch_id,))
+
+
+def unique_name(conn: sqlite3.Connection, space_id: str, base: str) -> str:
+    candidate = base[:120]
+    counter = 2
+    while conn.execute(
+        "SELECT 1 FROM branches WHERE space_id = ? AND name = ? LIMIT 1",
+        (space_id, candidate),
+    ).fetchone():
+        suffix = f" {counter}"
+        candidate = f"{base[: 120 - len(suffix)]}{suffix}"
+        counter += 1
+    return candidate
+
+
 def update_settings(
     conn: sqlite3.Connection,
     branch_id: str,

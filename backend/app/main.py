@@ -14,7 +14,7 @@ from app.config import REQUEST_HEADER, Settings
 from app.db import Database
 from app.errors import install_error_handlers
 from app.llm import build_provider
-from app.routes import auth, health, spaces
+from app.routes import auth, branches, chat, health, spaces
 
 logger = logging.getLogger("branchmind")
 
@@ -102,6 +102,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(health.router, prefix="/api")
     app.include_router(auth.router, prefix="/api")
     app.include_router(spaces.router, prefix="/api")
+    app.include_router(branches.router, prefix="/api")
+    app.include_router(chat.router, prefix="/api")
 
     return app
 

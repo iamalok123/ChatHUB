@@ -92,6 +92,41 @@ class BranchOut(BaseModel):
     memory_count: int
 
 
+class BranchUpdate(StrictModel):
+    name: Name | None = None
+    system_prompt: Annotated[str, StringConstraints(max_length=8000)] | None = None
+    persona: Annotated[str, StringConstraints(max_length=8000)] | None = None
+    model: Annotated[str, StringConstraints(max_length=120)] | None = None
+    thinking_level: Literal["low", "medium", "high"] | None = None
+    top_k: Annotated[int, Field(ge=1, le=20)] | None = None
+    memory_mode: Literal["review", "auto", "off"] | None = None
+    color: Annotated[str, StringConstraints(max_length=32)] | None = None
+
+
+class ChatRequest(StrictModel):
+    message: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=8000)]
+    expected_head_id: str | None = None
+
+
+class MessageOut(BaseModel):
+    id: str
+    role: str
+    content: str
+    parent_id: str | None
+    branch_id: str
+    origin_branch_name: str
+    is_inherited: bool
+    status: str
+    created_at: str
+
+
+class TraceOut(BaseModel):
+    commit_id: str
+    branch_id: str
+    trace: dict[str, Any] | None
+    trace_version: int | None = None
+
+
 class UserRecord(BaseModel):
     id: str
     email: str
