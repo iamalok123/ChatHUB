@@ -227,7 +227,7 @@ it('logs out from the sidebar and returns to the sign-in screen', async () => {
   render(<App />)
 
   await screen.findByRole('heading', { name: 'main' })
-  await browser.click(screen.getByRole('button', { name: /more options/i }))
+  await browser.click(screen.getByRole('button', { name: /user menu/i }))
   await browser.click(screen.getByRole('button', { name: /sign out/i }))
 
   expect(

@@ -6,14 +6,14 @@ import { IconButton } from './IconButton'
 
 const darkQuery = '(prefers-color-scheme: dark)'
 
-function subscribeToSystemTheme(onChange: () => void): () => void {
+export function subscribeToSystemTheme(onChange: () => void): () => void {
   if (typeof window.matchMedia !== 'function') return () => undefined
   const media = window.matchMedia(darkQuery)
   media.addEventListener('change', onChange)
   return () => media.removeEventListener('change', onChange)
 }
 
-function systemPrefersDark(): boolean {
+export function systemPrefersDark(): boolean {
   return typeof window.matchMedia === 'function' && window.matchMedia(darkQuery).matches
 }
 

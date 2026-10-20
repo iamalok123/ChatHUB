@@ -4,14 +4,15 @@ import {
   Check,
   ChevronDown,
   GitBranch,
+  KeyRound,
   LogOut,
-  MoreHorizontal,
+  Menu,
+  Moon,
   Plus,
   Search,
-  Settings2,
   X,
 } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import type { ReactNode } from 'react'
 
 import type { Branch, Space } from '../../api/types'
@@ -26,7 +27,8 @@ import {
 import { BranchMenu } from '../operations/BranchMenu'
 import { BrandMark } from '../ui/Brand'
 import { IconButton } from '../ui/IconButton'
-import { ThemeToggle } from '../ui/ThemeToggle'
+import { subscribeToSystemTheme, systemPrefersDark } from '../ui/ThemeToggle'
+import { ChangePasswordDialog } from './ChangePasswordDialog'
 
 type SidebarProps = {
   mobile: boolean
@@ -313,11 +315,16 @@ export function Sidebar({ mobile, onNavigate }: SidebarProps) {
   const selectBranch = useWorkspaceStore((state) => state.selectBranch)
   const user = useAuthStore((state) => state.user)
   const logout = useAuthStore((state) => state.logout)
+  const theme = useUiStore((state) => state.theme)
+  const setTheme = useUiStore((state) => state.setTheme)
   const setSidebarOpen = useUiStore((state) => state.setSidebarOpen)
-  const setSettingsOpen = useUiStore((state) => state.setSettingsOpen)
   const setNewSpaceOpen = useUiStore((state) => state.setNewSpaceOpen)
+  const systemDark = useSyncExternalStore(subscribeToSystemTheme, systemPrefersDark, () => false)
+  const effectiveTheme = theme === 'system' ? (systemDark ? 'dark' : 'light') : theme
+  const isDark = effectiveTheme === 'dark'
   const [filter, setFilter] = useState('')
   const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false)
   const userMenuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -435,58 +442,109 @@ export function Sidebar({ mobile, onNavigate }: SidebarProps) {
       </nav>
 
       {user && (
-        <div className="shrink-0 border-t border-border px-3 py-3">
-          <div className="flex items-center justify-between gap-2.5">
-            <div className="flex min-w-0 items-center gap-2.5">
-              <span className="grid size-8 shrink-0 place-items-center rounded-full bg-accent-soft text-[10px] font-semibold text-accent-ink">
+        <div ref={userMenuRef} className="relative shrink-0 border-t border-border px-3.5 py-3">
+          {userMenuOpen && (
+            <div
+              role="menu"
+              aria-label="User menu"
+              className="absolute bottom-full left-3.5 right-3.5 z-40 mb-2.5 space-y-1 rounded-2xl border border-border/80 bg-surface p-2 shadow-float animate-fade-in"
+            >
+              {/* Row 1: Dark Mode */}
+              <div
+                role="menuitem"
+                onClick={() => setTheme(isDark ? 'light' : 'dark')}
+                className="flex cursor-pointer items-center justify-between rounded-xl px-3 py-2.5 transition-colors hover:bg-hover"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="grid size-7 shrink-0 place-items-center rounded-full bg-hover text-amber-400">
+                    <Moon size={15} className="fill-amber-400 text-amber-400" aria-hidden />
+                  </span>
+                  <span className="text-[13px] font-medium text-ink">Dark Mode</span>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-label="Toggle dark mode"
+                  aria-checked={isDark}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setTheme(isDark ? 'light' : 'dark')
+                  }}
+                  className={cn(
+                    'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full p-0.5 transition-colors duration-200 ease-in-out focus:outline-none',
+                    isDark ? 'bg-[#ea580c]' : 'bg-neutral-600',
+                  )}
+                >
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      'pointer-events-none inline-block size-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out',
+                      isDark ? 'translate-x-5' : 'translate-x-0',
+                    )}
+                  />
+                </button>
+              </div>
+
+              {/* Row 2: Change Password */}
+              <button
+                type="button"
+                onClick={() => {
+                  setUserMenuOpen(false)
+                  setChangePasswordOpen(true)
+                }}
+                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] font-medium text-ink transition-colors hover:bg-hover"
+              >
+                <KeyRound size={17} className="shrink-0 text-[#ea580c]" aria-hidden />
+                <span>Change Password</span>
+              </button>
+
+              {/* Row 3: Sign Out */}
+              <button
+                type="button"
+                onClick={() => {
+                  setUserMenuOpen(false)
+                  void logout()
+                }}
+                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] font-medium text-[#f87171] transition-colors hover:bg-danger-soft/30"
+              >
+                <LogOut size={17} className="shrink-0 text-[#f87171]" aria-hidden />
+                <span>Sign Out</span>
+              </button>
+            </div>
+          )}
+
+          {/* User Bar */}
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <span className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-full bg-amber-500/20 text-xs font-bold text-amber-500 ring-2 ring-amber-500/30">
                 {initials(user.display_name)}
               </span>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-xs font-medium text-ink">{user.display_name}</p>
-                <p className="truncate text-[10px] text-muted">{user.email}</p>
+                <p className="truncate text-sm font-semibold text-ink leading-tight">
+                  {user.display_name}
+                </p>
+                <p className="truncate text-xs text-muted leading-tight mt-0.5">
+                  {user.email}
+                </p>
               </div>
             </div>
 
-            <div ref={userMenuRef} className="relative shrink-0">
-              <IconButton
-                label="More options"
-                aria-haspopup="menu"
-                aria-expanded={userMenuOpen}
-                onClick={() => setUserMenuOpen((value) => !value)}
-              >
-                <MoreHorizontal size={16} aria-hidden />
-              </IconButton>
-
-              {userMenuOpen && (
-                <div
-                  role="menu"
-                  aria-label="User actions"
-                  className="absolute bottom-full right-0 z-40 mb-2 flex items-center gap-1 rounded-xl border border-border bg-surface p-1 shadow-float animate-fade-in"
-                >
-                  <IconButton
-                    label="Settings"
-                    onClick={() => {
-                      setUserMenuOpen(false)
-                      setSettingsOpen(true)
-                      if (mobile) setSidebarOpen(false)
-                    }}
-                  >
-                    <Settings2 size={15} aria-hidden />
-                  </IconButton>
-                  <ThemeToggle />
-                  <IconButton
-                    label="Sign out"
-                    onClick={() => {
-                      setUserMenuOpen(false)
-                      void logout()
-                    }}
-                  >
-                    <LogOut size={15} aria-hidden />
-                  </IconButton>
-                </div>
-              )}
-            </div>
+            <button
+              type="button"
+              aria-label="User menu"
+              aria-haspopup="menu"
+              aria-expanded={userMenuOpen}
+              onClick={() => setUserMenuOpen((value) => !value)}
+              className="grid size-8 shrink-0 place-items-center rounded-lg text-muted transition-colors hover:bg-hover hover:text-ink"
+            >
+              <Menu size={18} aria-hidden />
+            </button>
           </div>
+
+          <ChangePasswordDialog
+            open={changePasswordOpen}
+            onClose={() => setChangePasswordOpen(false)}
+          />
         </div>
       )}
     </aside>
