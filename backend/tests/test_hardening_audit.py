@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -252,3 +253,35 @@ def test_upstream_delete_creates_child_tombstone(hardening_client: TestClient):
     # 6. Tombstones in child now empty for this memory
     tomb_res_after = hardening_client.get(f"/api/branches/{child_id}/tombstones")
     assert not any(t["id"] == mem_id for t in tomb_res_after.json())
+
+
+def test_security_headers_and_production_docs_hiding(hardening_client: TestClient, tmp_path):
+    """SEC-001/SEC-002: Security headers present and docs disabled in production mode."""
+    # 1. Verify security headers on health check
+    res = hardening_client.get("/api/health")
+    assert res.status_code == 200
+    assert res.headers.get("X-Content-Type-Options") == "nosniff"
+    assert res.headers.get("X-Frame-Options") == "DENY"
+    assert "default-src 'self'" in res.headers.get("Content-Security-Policy", "")
+
+    # 2. Verify X-ChatHUB-Request header is supported on mutating requests
+    space_res = hardening_client.post(
+        "/api/spaces",
+        json={"name": "ChatHUB Header Space"},
+        headers={"X-ChatHUB-Request": "1"},
+    )
+    assert space_res.status_code == 201
+
+    # 3. Verify production mode hides /api/docs and /api/openapi.json
+    prod_settings = replace(
+        Settings.from_env(),
+        db_path=tmp_path / "prod_test.db",
+        environment="production",
+        llm_mode="mock",
+    )
+    prod_app = create_app(prod_settings)
+    with TestClient(prod_app) as prod_client:
+        docs_res = prod_client.get("/api/docs")
+        assert docs_res.status_code == 404
+        openapi_res = prod_client.get("/api/openapi.json")
+        assert openapi_res.status_code == 404

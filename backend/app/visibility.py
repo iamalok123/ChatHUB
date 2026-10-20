@@ -212,9 +212,9 @@ def tombstoned_memories(conn: sqlite3.Connection, branch: sqlite3.Row) -> list[d
             f"""
             SELECT * FROM memories
             WHERE space_id = ?
-              AND deleted_at IS NOT NULL
-              AND origin_branch_id != ?
-              AND source_commit_id IN ({placeholders})
+                AND deleted_at IS NOT NULL
+                AND origin_branch_id != ?
+                AND source_commit_id IN ({placeholders})
             """,
             [branch["space_id"], branch["id"], *chunk],
         ).fetchall()

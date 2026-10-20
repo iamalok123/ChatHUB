@@ -9,11 +9,12 @@ from typing import Any
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from app import __version__
 from app.auth.ratelimit import SlidingWindowLimiter
 from app.auth.sessions import purge_expired
-from app.config import REQUEST_HEADER, Settings
+from app.config import CHATHUB_REQUEST_HEADER, REQUEST_HEADER, Settings
 from app.db import Database
 from app.engine.outbox import OutboxProcessor
 from app.errors import install_error_handlers
@@ -73,8 +74,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         title="ChatHUB",
         version=__version__,
         lifespan=lifespan,
-        docs_url="/api/docs",
-        openapi_url="/api/openapi.json",
+        docs_url=None if settings.is_production else "/api/docs",
+        openapi_url=None if settings.is_production else "/api/openapi.json",
         redoc_url=None,
     )
 
@@ -84,6 +85,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
+    )
+    app.add_middleware(
+        TrustedHostMiddleware,
+        allowed_hosts=list(settings.allowed_hosts),
     )
 
     app.state.settings = settings
@@ -98,7 +103,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.middleware("http")
     async def local_request_guard(request: Request, call_next: Any) -> Any:
         if request.url.path.startswith("/api") and request.method in MUTATING_METHODS:
-            if request.headers.get(REQUEST_HEADER) != "1":
+            req_header = request.headers.get(CHATHUB_REQUEST_HEADER) or request.headers.get(
+                REQUEST_HEADER
+            )
+            if req_header != "1":
                 return JSONResponse(
                     status_code=403,
                     content={
@@ -123,6 +131,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("Referrer-Policy", "no-referrer")
         response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault(
+            "Content-Security-Policy",
+            (
+                "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
+                "img-src 'self' data:; connect-src 'self' ws:; frame-ancestors 'none';"
+            ),
+        )
         return response
 
     app.include_router(health.router, prefix="/api")

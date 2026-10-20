@@ -11,6 +11,7 @@ load_dotenv(ROOT_DIR / ".env")
 
 SESSION_COOKIE_NAME = "branchmind_session"
 REQUEST_HEADER = "X-BranchMind-Request"
+CHATHUB_REQUEST_HEADER = "X-ChatHUB-Request"
 
 DEFAULT_ALLOWED_MODELS = (
     "gemini-3.8-flash",
@@ -62,6 +63,8 @@ class Settings:
     memory_token_budget: int = 800
     extraction_max_candidates: int = 5
     custom_allowed_origins: tuple[str, ...] = ()
+    custom_allowed_hosts: tuple[str, ...] = ()
+    environment: str = "development"
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -80,6 +83,9 @@ class Settings:
             origin.strip()
             for origin in os.getenv("ALLOWED_ORIGINS", "").split(",")
             if origin.strip()
+        )
+        custom_hosts = tuple(
+            h.strip() for h in os.getenv("ALLOWED_HOSTS", "").split(",") if h.strip()
         )
         return cls(
             app_host=os.getenv("APP_HOST", "127.0.0.1"),
@@ -105,6 +111,10 @@ class Settings:
             memory_token_budget=_env_int("MEMORY_TOKEN_BUDGET", 800),
             extraction_max_candidates=_env_int("EXTRACTION_MAX_CANDIDATES", 5),
             custom_allowed_origins=custom_origins,
+            custom_allowed_hosts=custom_hosts,
+            environment=(
+                os.getenv("ENVIRONMENT", os.getenv("NODE_ENV", "development")).strip().lower()
+            ),
         )
 
     @property
@@ -113,6 +123,10 @@ class Settings:
             self.database_url.startswith("postgresql://")
             or self.database_url.startswith("postgres://")
         )
+
+    @property
+    def is_production(self) -> bool:
+        return self.environment == "production"
 
     @property
     def effective_llm_mode(self) -> str:
@@ -127,6 +141,17 @@ class Settings:
         for port in sorted(ports):
             origins.extend([f"http://127.0.0.1:{port}", f"http://localhost:{port}"])
         return tuple(dict.fromkeys(origins))
+
+    @property
+    def allowed_hosts(self) -> tuple[str, ...]:
+        hosts = [
+            "127.0.0.1",
+            "localhost",
+            "testserver",
+            self.app_host,
+        ]
+        hosts.extend(self.custom_allowed_hosts)
+        return tuple(dict.fromkeys(h for h in hosts if h and h != "0.0.0.0"))
 
     def validate_runtime(self) -> None:
         if self.app_host not in {"127.0.0.1", "localhost", "0.0.0.0"}:
