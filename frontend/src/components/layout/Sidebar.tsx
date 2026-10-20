@@ -187,7 +187,7 @@ function BranchItem({
         <span className="min-w-0 flex-1 truncate">{branch.name}</span>
         {branch.archived && <Archive size={11} className="shrink-0" aria-hidden />}
         {showParent && parentName && (
-          <span className="max-w-[64px] shrink-0 truncate text-[9px] text-muted/75">
+          <span className="max-w-16 shrink-0 truncate text-[9px] text-muted/75">
             {parentName}
           </span>
         )}
@@ -334,12 +334,12 @@ export function Sidebar({ mobile, onNavigate }: SidebarProps) {
   return (
     <aside
       className={cn(
-        'flex h-svh w-[278px] shrink-0 flex-col border-r border-border bg-sidebar',
-        mobile && 'fixed inset-y-0 left-0 z-50 w-[300px] shadow-float',
+        'flex h-svh w-69.5 shrink-0 flex-col border-r border-border bg-sidebar',
+        mobile && 'fixed inset-y-0 left-0 z-50 w-75 shadow-float',
       )}
       aria-label="Workspace sidebar"
     >
-      <div className="flex h-[58px] shrink-0 items-center justify-between px-4">
+      <div className="flex h-14.5 shrink-0 items-center justify-between px-4">
         <div className="flex items-center gap-2.5">
           <BrandMark className="size-8 rounded-[10px]" />
           <span className="text-[15px] font-semibold tracking-[-0.02em] text-ink">

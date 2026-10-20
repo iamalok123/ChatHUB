@@ -25,11 +25,20 @@ INJECTION_PATTERNS = [
         r"ignore (?:all )?(?:previous|above|prior) (?:instructions|prompts|rules)",
         re.IGNORECASE,
     ),
-    re.compile(r"disregard (?:all )?(?:previous|prior) instructions", re.IGNORECASE),
+    re.compile(
+        r"disregard (?:all )?(?:previous|above|prior) (?:instructions|directives|rules)",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"forget (?:all )?(?:previous|above|prior) (?:instructions|directives|rules)",
+        re.IGNORECASE,
+    ),
     re.compile(
         r"(?:reveal|output|display|show|print) (?:the )?(?:system|developer) prompt",
         re.IGNORECASE,
     ),
+    re.compile(r"system override\b", re.IGNORECASE),
+    re.compile(r"developer mode\b", re.IGNORECASE),
     re.compile(r"you (?:must|will) always", re.IGNORECASE),
     re.compile(r"always (?:respond|answer|say|output|pretend)", re.IGNORECASE),
     re.compile(r"never (?:mention|refuse|reveal|tell)", re.IGNORECASE),

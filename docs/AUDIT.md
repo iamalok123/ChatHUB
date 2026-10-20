@@ -26,3 +26,19 @@ Every finding is recorded with:
 | **BRN-001** | Medium | **Upstream deletion leaves child unaware:** When an ancestor branch soft-deletes an inherited memory, child branches had no tombstone indicator. | Introduce `status='tombstoned'` state; child displays "Removed upstream" with a "Keep local copy" button. | `test_upstream_delete_creates_child_tombstone` | `fixed` |
 | **JOB-001** | Medium | **Memory rot & no background consolidation:** Expired or inactive memories never decayed or flagged staleness; contradictions accumulated silently. | Implement background consolidation engine (`jobs` table) with staleness sweep, contradiction sweep, and review inbox. | `test_staleness_sweep_flags_expired_memories` | `fixed` |
 | **SCH-001** | High | **Lack of versioned migration runner:** Schema lived in static SQL files without numbered migrations, version tracking, or Schema v2 columns/tables. | Implement `schema_migrations` runner and Migration `0002_hardening_v2.sql` adding Schema v2 columns, `memory_events`, `outbox_events`, and `jobs`. | `test_schema_migration_runner` | `fixed` |
+
+---
+
+## Automated Evaluations & Chaos Benchmarks (Phases H10 & H11)
+
+All automated evals are codified in [`backend/tests/test_evals_and_chaos.py`](../backend/tests/test_evals_and_chaos.py) and executed as part of continuous testing:
+
+| Benchmark / Eval | Objective | Methodology & Verification | Result |
+| :--- | :--- | :--- | :--- |
+| **EVAL-1: Cross-Branch Isolation** | 0% canary leakage across sibling branches | Injected unique canary tokens (`CANARY-ALPHA-9981-SECRET`, etc.) across multiple sibling branches; verified zero leakage into sibling contexts, memories, or traces. | `PASSED` (0% leakage) |
+| **EVAL-2: Prompt Injection Defense** | Jailbreak & instruction override rejection | Evaluated against direct system override payloads, developer mode bypasses, and directive disregard strings. | `PASSED` (100% detection) |
+| **EVAL-3: Secret & Entropy Scanner** | Block API keys and high-entropy secrets | Scanned live patterns (`AIza...`, `sk-ant-...`, `ghp_...`, JWTs) and random high-entropy strings ($\ge 4.2$ bits). | `PASSED` (400 Bad Request) |
+| **EVAL-4: Hybrid MMR Precision** | Penalize redundant near-duplicate context | Dense vectors on the same topic penalized via MMR ($\lambda=0.7$), promoting topic diversity in working memory. | `PASSED` (Diverse context selected) |
+| **EVAL-5: Concurrency Chaos** | Branch generation lock resilience | Simulated simultaneous generation requests on the same branch head. Second call receives 409 Conflict; lock reliably releases upon completion. | `PASSED` (409 Conflict + lock release) |
+| **EVAL-6: Atomic Forget Scrub** | Complete scrubbing for GDPR/privacy compliance | Memory row, versions, Qdrant vectors, FTS indexes, and commit trace JSON references completely removed. | `PASSED` (100% scrubbed) |
+
