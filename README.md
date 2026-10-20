@@ -1,21 +1,22 @@
-# BranchMind
+# ChartHub
 
-BranchMind treats a conversation like a Git repository: a **Space** is the repository, a **Branch** is a chat thread, and **Memories** are versioned, inherited, and mergeable.
+ChartHub treats conversations like Git repositories: a **Space** is the repository, a **Branch** is an isolated conversational timeline, and **Memories** are versioned, inherited, selectable, and mergeable.
 
 The authoritative build contract lives in [AGENTS.md](AGENTS.md). Architecture decisions are recorded in [docs/DECISIONS.md](docs/DECISIONS.md).
 
 ---
 
-## Tech Stack
+## Tech Stack & Production Architecture
 
 | Layer | Technology | Details |
 | :--- | :--- | :--- |
-| **Backend** | Python 3.12, FastAPI, Uvicorn | Native Server-Sent Events (SSE) streaming, async endpoints |
-| **Database** | SQLite via standard library `sqlite3` | WAL mode, foreign keys, ACID transactions, `PRAGMA busy_timeout=5000` |
+| **Backend** | Python 3.12, FastAPI, Uvicorn | Native Server-Sent Events (SSE) streaming, async endpoints, Render & Railway ready |
+| **Database** | PostgreSQL (NeonDB) / SQLite | Dual-mode: Production serverless PostgreSQL with NeonDB (`DATABASE_URL`), zero-setup local SQLite fallback |
+| **Vector Engine** | Qdrant / Local NumPy Cosine | Dual-mode: Dedicated Qdrant vector database (`QdrantClient`) with two-phase ancestor isolation, zero-setup local fallback |
 | **AI / Embeddings** | Google Gemini (`google-genai` SDK) | `gemini-3.8-flash` with thinking levels, `gemini-embedding-001` (768-dim) |
 | **Local Fallback** | Deterministic Mock Provider | Streamed canned replies, hash embeddings, synthetic context summaries |
 | **Auth** | Argon2id (`argon2-cffi`) | HttpOnly, SameSite=Lax session cookies, cryptographic token hashing |
-| **Frontend** | Vite, React 19, TypeScript | Strict typing, responsive drawer layout, dark/light themes |
+| **Frontend** | Vite, React 19, TypeScript | Strict typing, responsive drawer layout, dark/light themes, Vercel ready |
 | **Styling** | Tailwind CSS v4 + CSS variables | Self-hosted `@fontsource-variable` (Inter, Source Serif 4, JetBrains Mono) |
 | **Interactive Graph**| `@xyflow/react` (React Flow) | Lazy-loaded DAG branch visualizer with commit and sync markers |
 | **Markdown** | `react-markdown`, `remark-gfm`, `rehype-highlight` | Syntax-highlighted code blocks, tables, math, safe rendering |
@@ -170,3 +171,94 @@ All suites pass with 100% success rate:
 * **TypeScript Compilation (`tsc`):** Zero errors.
 * **Vite Production Build:** Success.
 * **Linters (`oxlint`, `ruff`):** Zero warnings, zero errors.
+
+---
+
+## Production Deployment Guide
+
+ChartHub is fully engineered for split-architecture production deployment:
+* **Frontend:** Deployed to **Vercel** as a high-performance static SPA with automated API rewrites.
+* **Backend:** Deployed to **Render** or **Railway** as a containerized FastAPI service.
+* **Database:** Serverless **PostgreSQL** hosted on **NeonDB** (zero-sleep architecture).
+* **Vector Engine:** Cloud-managed **Qdrant** (or local vector fallback).
+
+```
+   ┌────────────────────────────────────────────────────────┐
+   │                   Frontend (Vercel)                    │
+   │   SPA UI + vercel.json reverse proxy to /api/*         │
+   └───────────┬────────────────────────────────────────────┘
+               │
+               ▼ HTTPS (First-Party Cookies preserved)
+   ┌────────────────────────────────────────────────────────┐
+   │             Backend (Render / Railway)                 │
+   │       FastAPI + Uvicorn Async Server                   │
+   │  (schema_pg.sql auto-migrated on first boot)           │
+   └───┬────────────────────────────────────────────────┬───┘
+       │                                                │
+       ▼ Connection Pool                                ▼ REST / gRPC
+ ┌──────────────┐                                ┌──────────────┐
+ │ NeonDB (PG)  │                                │ Qdrant Cloud │
+ │ Relational DB│                                │ Vector DB    │
+ └──────────────┘                                └──────────────┘
+```
+
+### 1. Database Setup (NeonDB PostgreSQL)
+1. Sign up at [neon.tech](https://neon.tech) and create a free PostgreSQL project.
+2. Under "Connection details", copy the pooled connection string, e.g.:
+   ```
+   postgresql://user:password@ep-sample-pooler.us-east-2.aws.neon.tech/neondb?sslmode=require
+   ```
+3. Set `DATABASE_URL` in your backend environment variables. The backend automatically boots with `schema_pg.sql` and creates all tables, foreign keys, and indexes.
+
+### 2. Vector DB Setup (Qdrant)
+1. Sign up at [qdrant.tech](https://cloud.qdrant.io) and create a free 1GB cluster.
+2. Note your Cluster URL (e.g., `https://xxxx.cloud.qdrant.io:6333`) and generate an API key.
+3. Set `QDRANT_URL` and `QDRANT_API_KEY` in your backend environment variables.
+*(Note: If omitted, ChartHub falls back seamlessly to internal NumPy cosine similarity.)*
+
+### 3. Deploy Backend to Render or Railway
+
+#### Option A: Render
+1. Connect your Git repository to [render.com](https://render.com).
+2. Select **Web Service**, set Root Directory to `backend` (or use the included `backend/render.yaml` Blueprint).
+3. Set Build Command: `pip install -r requirements.txt`
+4. Set Start Command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+5. Configure Environment Variables in Render Dashboard:
+   - `APP_HOST`: `0.0.0.0`
+   - `DATABASE_URL`: Your NeonDB PostgreSQL connection string
+   - `QDRANT_URL`: Your Qdrant cluster endpoint
+   - `QDRANT_API_KEY`: Your Qdrant API key
+   - `GEMINI_API_KEY`: Your Google Gemini API key
+   - `ALLOWED_ORIGINS`: Your Vercel frontend URL (e.g., `https://chathub.vercel.app`)
+   - `COOKIE_SECURE`: `true`
+   - `ALLOW_SIGNUP`: `true`
+
+#### Option B: Railway
+1. Create a new project on [railway.app](https://railway.app) from your GitHub repo.
+2. Set Root Directory to `/backend` (Railway detects `backend/Procfile` and `backend/railway.json`).
+3. Add the same Environment Variables listed above.
+
+### 4. Deploy Frontend to Vercel
+1. Import your Git repository into [vercel.com](https://vercel.com).
+2. Set **Root Directory** to `frontend`.
+3. Framework Preset: **Vite**.
+4. Build Command: `npm run build`
+5. Output Directory: `dist`
+6. Add Environment Variable:
+   - `VITE_API_URL`: Your deployed backend URL (e.g., `https://chathub-backend.onrender.com`)
+7. Click **Deploy**. The included `frontend/vercel.json` automatically proxies `/api/*` to `VITE_API_URL`, ensuring authentication cookies and SSE streams pass without third-party cookie restrictions.
+
+---
+
+## Renaming the Base Directory to "ChartHub" on Windows
+
+Because Windows locks active working directories when command prompts or IDEs have handles open, follow these quick steps:
+
+1. Close any running dev servers (`Ctrl+C`).
+2. Close the current terminal or switch to the parent directory:
+   ```powershell
+   cd ..
+   Rename-Item -Path "New folder" -NewName "ChartHub"
+   cd ChartHub
+   ```
+3. Open the newly renamed `ChartHub` directory in your editor or terminal. All configurations, Git history, and dependencies remain completely intact.

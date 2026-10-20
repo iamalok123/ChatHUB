@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app import __version__
@@ -14,9 +15,10 @@ from app.config import REQUEST_HEADER, Settings
 from app.db import Database
 from app.errors import install_error_handlers
 from app.llm import build_provider
+from app.llm.qdrant import QdrantStore
 from app.routes import auth, branches, chat, health, memories, ops, spaces
 
-logger = logging.getLogger("branchmind")
+logger = logging.getLogger("chathub")
 
 MUTATING_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 
@@ -30,8 +32,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
     )
 
-    database = Database(settings.db_path)
+    database = Database(settings.db_path, database_url=settings.database_url)
     provider = build_provider(settings)
+    qdrant = QdrantStore(
+        url=settings.qdrant_url,
+        api_key=settings.qdrant_api_key,
+        collection=settings.qdrant_collection,
+        dim=settings.gemini_embed_dim,
+    )
 
     @asynccontextmanager
     async def lifespan(_: FastAPI):
@@ -42,10 +50,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         finally:
             conn.close()
         logger.info(
-            "BranchMind ready in %s mode on %s:%s",
+            "ChartHub ready in %s mode on %s:%s (db: %s, qdrant: %s)",
             settings.effective_llm_mode,
             settings.app_host,
             settings.backend_port,
+            "postgresql" if settings.is_postgres else "sqlite",
+            "connected" if qdrant.is_enabled else "in-memory/local",
         )
         try:
             yield
@@ -53,7 +63,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             await provider.close()
 
     app = FastAPI(
-        title="BranchMind",
+        title="ChartHub",
         version=__version__,
         lifespan=lifespan,
         docs_url="/api/docs",
@@ -61,9 +71,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         redoc_url=None,
     )
 
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=list(settings.allowed_origins),
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
     app.state.settings = settings
     app.state.database = database
     app.state.provider = provider
+    app.state.qdrant = qdrant
     app.state.signup_limiter = SlidingWindowLimiter(limit=5, window_seconds=600)
     app.state.login_limiter = SlidingWindowLimiter(limit=10, window_seconds=300)
 

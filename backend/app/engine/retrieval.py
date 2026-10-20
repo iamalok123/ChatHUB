@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import sqlite3
 import time
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -11,6 +10,7 @@ import numpy as np
 from app.engine.context import estimate_tokens
 from app.llm.base import LLMProvider
 from app.llm.embeddings import cosine, from_blob, is_stale_embedding
+from app.llm.qdrant import QdrantStore
 from app.visibility import effective_memories, excluded_memories
 
 MIN_SCORE = 0.25
@@ -122,14 +122,15 @@ def build_query(user_text: str, previous_assistant_text: str | None) -> str:
 
 
 async def retrieve_memories(
-    conn: sqlite3.Connection,
-    branch: sqlite3.Row,
+    conn: Any,
+    branch: Any,
     *,
     user_text: str,
     previous_assistant_text: str | None,
     provider: LLMProvider,
     top_k: int,
     memory_budget: int,
+    qdrant: QdrantStore | None = None,
 ) -> RetrievalResult:
     started = time.perf_counter()
     top_k = max(1, min(int(top_k), 50))
@@ -188,27 +189,53 @@ async def retrieve_memories(
             f"Memory similarity search was unavailable ({code}); pinned memories were kept."
         )
 
+    qdrant_similarities: dict[str, float] = {}
+    if qdrant and qdrant.is_enabled and query_vector is not None:
+        valid_ids = [m["id"] for m in memories if m.get("id")]
+        qdrant_similarities = qdrant.search_similarities(
+            query_vector, valid_ids, limit=len(valid_ids)
+        )
+
     scored: list[dict[str, Any]] = []
     stale_count = 0
     for item in memories:
         vector = _vector(item, provider)
         recency = recency_decay(item.get("created_at", ""))
-        if vector is None or query_vector is None:
-            if vector is None:
-                stale_count += 1
+        mem_id = item.get("id")
+        has_qdrant_match = mem_id in qdrant_similarities
+        if vector is None and not has_qdrant_match:
+            stale_count += 1
             entry = _detail(
                 item,
                 similarity=None,
                 recency=recency,
                 score=None,
-                reason=("stale embedding" if vector is None else "similarity search unavailable"),
+                reason="stale embedding",
             )
             entry["_item"] = item
             entry["_eligible"] = bool(item.get("pinned"))
             entry["_score"] = float(item.get("importance", 0.5)) * 0.25 + recency * 0.15
             scored.append(entry)
             continue
-        similarity = cosine(query_vector, vector)
+        if query_vector is None:
+            entry = _detail(
+                item,
+                similarity=None,
+                recency=recency,
+                score=None,
+                reason="similarity search unavailable",
+            )
+            entry["_item"] = item
+            entry["_eligible"] = bool(item.get("pinned"))
+            entry["_score"] = float(item.get("importance", 0.5)) * 0.25 + recency * 0.15
+            scored.append(entry)
+            continue
+
+        if has_qdrant_match:
+            similarity = qdrant_similarities[mem_id]
+        else:
+            similarity = cosine(query_vector, vector) if vector is not None else 0.0
+
         score = 0.60 * similarity + 0.25 * item.get("importance", 0.5) + 0.15 * recency
         entry = _detail(
             item,

@@ -264,3 +264,20 @@ This file records decisions and deviations from the original local-only, Ollama-
 
 **Consequences:** Moving tests required updating relative import paths for components and store modules. Production code is now free of test clutter. Developers can run `npm run dev`, `npm test`, `npm run build`, and `npm run lint` directly from the repository root or within the `frontend/` directory.
 
+## D-037: PostgreSQL (NeonDB) dual-mode and Qdrant vector database support
+
+**Decision:** Support both PostgreSQL (NeonDB) in production via `DATABASE_URL` and SQLite for local development/testing. Support Qdrant Cloud or local container via `QDRANT_URL` and `QDRANT_API_KEY`, using a Two-Phase ID-filtered vector retrieval pattern that resolves commit DAG visibility in SQL before querying vector similarity in Qdrant.
+
+**Reason:** Production scalability benefits from serverless PostgreSQL on NeonDB without idle sleep timeouts that break apps, and offloads vector index compute to Qdrant. Preserving SQLite and in-memory cosine fallback allows existing test suites and offline local workflows to remain instant and fully operational.
+
+**Consequences:** Added `psycopg` (v3) and `qdrant-client` to requirements. Schema DDL is maintained for both SQLite (`schema.sql`) and PostgreSQL (`schema_pg.sql`). Parameter binding transparently bridges `?` and `%s`.
+
+## D-038: Independent frontend (Vercel) and backend (Render / Railway) deployment architecture
+
+**Decision:** Structure deployment manifests so frontend and backend can be hosted on different platforms (Frontend on Vercel, Backend on Render or Railway). Configure `frontend/vercel.json` with reverse proxy rewrites (`/api/:path*`) to the backend, enabling first-party cookie behavior without cross-origin tracking blocks. Add `backend/render.yaml`, `backend/Procfile`, and `backend/railway.json`.
+
+**Reason:** Modern single-page applications frequently deploy static assets to edge CDNs (Vercel) and long-running SSE servers to container runtimes (Render/Railway). Vercel rewrites avoid CORS preflight latency on chat streams and keep session cookies on the same domain.
+
+**Consequences:** CORS middleware is configured to allow custom production domains when direct cross-origin calls are used. The app can be deployed together or completely independently.
+
+

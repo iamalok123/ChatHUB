@@ -1,8 +1,8 @@
 {
-  "name": "branchmind-workspace",
+  "name": "chathub-workspace",
   "private": true,
   "version": "1.0.0",
-  "description": "BranchMind - Git for chatbot memory",
+  "description": "ChartHub - Git for chatbot memory",
   "scripts": {
     "dev": "npm --prefix frontend run dev",
     "dev:all": "powershell -NoProfile -ExecutionPolicy Bypass -File ./run.ps1",

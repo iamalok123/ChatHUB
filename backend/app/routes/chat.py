@@ -162,6 +162,7 @@ async def chat(
             ) from exc
         provider = request.app.state.provider
         settings = request.app.state.settings
+        qdrant = getattr(request.app.state, "qdrant", None)
         retrieval = await retrieve_memories(
             conn,
             branch,
@@ -170,6 +171,7 @@ async def chat(
             provider=provider,
             top_k=branch["top_k"],
             memory_budget=settings.memory_token_budget,
+            qdrant=qdrant,
         )
         context, compose_step = _compose(
             request=request,
@@ -263,6 +265,7 @@ async def regenerate(
         history_before_current = history[:-1]
         provider = request.app.state.provider
         settings = request.app.state.settings
+        qdrant = getattr(request.app.state, "qdrant", None)
         retrieval = await retrieve_memories(
             conn,
             new_branch,
@@ -271,6 +274,7 @@ async def regenerate(
             provider=provider,
             top_k=new_branch["top_k"],
             memory_budget=settings.memory_token_budget,
+            qdrant=qdrant,
         )
         context, compose_step = _compose(
             request=request,

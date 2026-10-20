@@ -4,34 +4,112 @@ import sqlite3
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
+from typing import Any
 
 SCHEMA_PATH = Path(__file__).with_name("schema.sql")
+PG_SCHEMA_PATH = Path(__file__).with_name("schema_pg.sql")
+
+
+class PostgresCursorWrapper:
+    def __init__(self, cur: Any) -> None:
+        self._cur = cur
+
+    def fetchone(self) -> dict[str, Any] | None:
+        return self._cur.fetchone()
+
+    def fetchall(self) -> list[dict[str, Any]]:
+        return self._cur.fetchall()
+
+    @property
+    def rowcount(self) -> int:
+        return self._cur.rowcount
+
+    def __iter__(self) -> Any:
+        return iter(self._cur)
+
+
+class PostgresConnectionWrapper:
+    """Wraps a psycopg3 connection to provide SQLite-like execution ergonomics."""
+
+    def __init__(self, raw_conn: Any) -> None:
+        self._conn = raw_conn
+
+    def execute(self, sql: str, params: tuple | list | None = None) -> PostgresCursorWrapper:
+        # Translate SQLite ? parameter placeholders to PostgreSQL %s
+        pg_sql = sql.replace("?", "%s")
+        cur = self._conn.execute(pg_sql, params or ())
+        return PostgresCursorWrapper(cur)
+
+    def executescript(self, script: str) -> None:
+        self._conn.execute(script)
+
+    def commit(self) -> None:
+        self._conn.commit()
+
+    def rollback(self) -> None:
+        self._conn.rollback()
+
+    def close(self) -> None:
+        self._conn.close()
+
+    def __enter__(self) -> PostgresConnectionWrapper:
+        return self
+
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        if exc_type is not None:
+            self._conn.rollback()
+        else:
+            self._conn.commit()
 
 
 class Database:
-    def __init__(self, path: Path) -> None:
+    def __init__(self, path: Path, database_url: str = "") -> None:
         self.path = Path(path)
-        self._schema = SCHEMA_PATH.read_text(encoding="utf-8")
+        self.database_url = database_url
+        self._sqlite_schema = SCHEMA_PATH.read_text(encoding="utf-8")
+        self._pg_schema = PG_SCHEMA_PATH.read_text(encoding="utf-8")
+
+    @property
+    def is_postgres(self) -> bool:
+        return bool(
+            self.database_url.startswith("postgresql://")
+            or self.database_url.startswith("postgres://")
+        )
 
     def initialize(self) -> None:
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        conn = self.connect()
-        try:
-            conn.executescript(self._schema)
-            conn.commit()
-        finally:
-            conn.close()
+        if self.is_postgres:
+            conn = self.connect()
+            try:
+                conn.executescript(self._pg_schema)
+                conn.commit()
+            finally:
+                conn.close()
+        else:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            conn = self.connect()
+            try:
+                conn.executescript(self._sqlite_schema)
+                conn.commit()
+            finally:
+                conn.close()
 
-    def connect(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(self.path, timeout=5.0, check_same_thread=False)
-        conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA foreign_keys = ON")
-        conn.execute("PRAGMA journal_mode = WAL")
-        conn.execute("PRAGMA busy_timeout = 5000")
-        return conn
+    def connect(self) -> sqlite3.Connection | PostgresConnectionWrapper:
+        if self.is_postgres:
+            import psycopg
+            from psycopg.rows import dict_row
+
+            raw_conn = psycopg.connect(self.database_url, row_factory=dict_row)
+            return PostgresConnectionWrapper(raw_conn)
+        else:
+            conn = sqlite3.connect(self.path, timeout=5.0, check_same_thread=False)
+            conn.row_factory = sqlite3.Row
+            conn.execute("PRAGMA foreign_keys = ON")
+            conn.execute("PRAGMA journal_mode = WAL")
+            conn.execute("PRAGMA busy_timeout = 5000")
+            return conn
 
     @contextmanager
-    def session(self) -> Iterator[sqlite3.Connection]:
+    def session(self) -> Iterator[sqlite3.Connection | PostgresConnectionWrapper]:
         conn = self.connect()
         try:
             with conn:
