@@ -85,12 +85,12 @@ describe('personalization', () => {
     render(<PersonalizationPanel branch={branch} space={space} />)
 
     expect(screen.getByLabelText('Preferred tone')).toHaveValue('direct')
-    await browser.type(
-      screen.getByLabelText('About you'),
-      'I build local-first tools.',
-    )
-    await browser.clear(screen.getByLabelText('Preferred tone'))
-    await browser.type(screen.getByLabelText('Preferred tone'), 'warm')
+    fireEvent.change(screen.getByLabelText('About you'), {
+      target: { value: 'I build local-first tools.' },
+    })
+    fireEvent.change(screen.getByLabelText('Preferred tone'), {
+      target: { value: 'warm' },
+    })
     await browser.click(screen.getByRole('button', { name: 'Save profile' }))
 
     await waitFor(() =>
@@ -124,8 +124,9 @@ describe('personalization', () => {
     render(<PersonalizationPanel branch={branch} space={space} />)
 
     const persona = screen.getByLabelText('Branch persona')
-    await browser.clear(persona)
-    await browser.type(persona, 'A direct product partner.')
+    fireEvent.change(persona, {
+      target: { value: 'A direct product partner.' },
+    })
     await browser.selectOptions(screen.getByLabelText('Thinking level'), 'high')
     await browser.selectOptions(screen.getByLabelText('Memory mode'), 'auto')
     fireEvent.change(screen.getByLabelText(/memory strength/i), {

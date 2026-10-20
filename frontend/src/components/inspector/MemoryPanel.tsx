@@ -145,7 +145,7 @@ function MemoryEditor({
               value={Math.round(importance * 100)}
               onChange={(event) => setImportance(Number(event.target.value) / 100)}
               aria-label="Memory importance"
-              className="min-w-0 flex-1 accent-[var(--color-accent)]"
+              className="min-w-0 flex-1 accent-accent"
             />
             <span className="w-7 text-right font-mono text-[9px] text-ink">
               {Math.round(importance * 100)}
@@ -453,7 +453,7 @@ function ProposalCard({
                 value={Math.round(importance * 100)}
                 onChange={(event) => setImportance(Number(event.target.value) / 100)}
                 aria-label="Proposal importance"
-                className="min-w-0 flex-1 accent-[var(--color-accent)]"
+                className="min-w-0 flex-1 accent-accent"
               />
               <span className="w-7 text-right font-mono text-[9px] text-ink">
                 {Math.round(importance * 100)}
@@ -1167,7 +1167,7 @@ export function MemoryPanel({ branch }: { branch: Branch }) {
             <Brain size={18} aria-hidden />
           </span>
           <h3 className="text-xs font-medium text-ink">No memories yet</h3>
-          <p className="mt-1.5 max-w-[230px] text-[11px] leading-relaxed text-muted">
+          <p className="mt-1.5 max-w-57.5 text-[11px] leading-relaxed text-muted">
             Durable facts and preferences from conversations will collect here. You can
             also add one directly.
           </p>

@@ -34,7 +34,7 @@ export function WorkspaceHeader({ isMobile }: { isMobile: boolean }) {
   const ancestors = chain.slice(0, -1)
 
   return (
-    <header className="flex h-[58px] shrink-0 items-center gap-2 border-b border-border bg-bg/90 px-3 backdrop-blur sm:px-4">
+    <header className="flex h-14.5 shrink-0 items-center gap-2 border-b border-border bg-bg/90 px-3 backdrop-blur sm:px-4">
       {isMobile && (
         <IconButton label="Open sidebar" onClick={() => setSidebarOpen(true)}>
           <Menu size={18} aria-hidden />
@@ -44,7 +44,7 @@ export function WorkspaceHeader({ isMobile }: { isMobile: boolean }) {
       <div className="flex min-w-0 flex-1 items-center gap-1.5">
         {space && (
           <>
-            <span className="hidden max-w-[150px] truncate text-xs text-muted sm:block">
+            <span className="hidden max-w-37.5 truncate text-xs text-muted sm:block">
               {space.name}
             </span>
             {branch && (
@@ -58,7 +58,7 @@ export function WorkspaceHeader({ isMobile }: { isMobile: boolean }) {
             <button
               type="button"
               onClick={() => selectBranch(ancestor.id)}
-              className="max-w-[130px] truncate text-xs text-muted transition-colors hover:text-ink"
+              className="max-w-32.5 truncate text-xs text-muted transition-colors hover:text-ink"
               title={`Switch to ${ancestor.name}`}
             >
               {ancestor.name}

@@ -280,7 +280,7 @@ function PaletteContent() {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[120] flex items-start justify-center px-4 pt-[12vh] sm:pt-[16vh]"
+      className="fixed inset-0 z-120 flex items-start justify-center px-4 pt-[12vh] sm:pt-[16vh]"
       role="presentation"
       onKeyDown={(event) => {
         if (visible.length === 0) return

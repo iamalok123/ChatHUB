@@ -6,8 +6,13 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
+BACKEND_DIR = Path(__file__).resolve().parents[1]
 ROOT_DIR = Path(__file__).resolve().parents[2]
-load_dotenv(ROOT_DIR / ".env")
+
+if (BACKEND_DIR / ".env").is_file():
+    load_dotenv(BACKEND_DIR / ".env")
+if (ROOT_DIR / ".env").is_file():
+    load_dotenv(ROOT_DIR / ".env")
 
 SESSION_COOKIE_NAME = "branchmind_session"
 REQUEST_HEADER = "X-BranchMind-Request"
@@ -68,10 +73,11 @@ class Settings:
 
     @classmethod
     def from_env(cls) -> Settings:
-        db_raw = os.getenv("DB_PATH", "./data/branchmind.db")
+        db_raw = os.getenv("DB_PATH", "./data/chathub.db")
         db_path = Path(db_raw)
         if not db_path.is_absolute():
-            db_path = ROOT_DIR / db_path
+            base_dir = ROOT_DIR if (ROOT_DIR / "backend").exists() else BACKEND_DIR
+            db_path = base_dir / db_path
         allowed = tuple(
             model.strip()
             for model in os.getenv("GEMINI_ALLOWED_MODELS", ",".join(DEFAULT_ALLOWED_MODELS)).split(
@@ -89,7 +95,7 @@ class Settings:
         )
         return cls(
             app_host=os.getenv("APP_HOST", "127.0.0.1"),
-            backend_port=_env_int("BACKEND_PORT", 8000),
+            backend_port=_env_int("BACKEND_PORT", 0) or _env_int("PORT", 8000),
             frontend_port=_env_int("FRONTEND_PORT", 5173),
             db_path=db_path,
             database_url=os.getenv("DATABASE_URL", "").strip(),

@@ -1,4 +1,4 @@
-import { readApiError } from './client'
+import { API_BASE, readApiError } from './client'
 
 export type SseEvent = {
   event: string
@@ -51,7 +51,7 @@ export async function streamApi(path: string, options: StreamOptions): Promise<v
     body = JSON.stringify(options.body)
   }
 
-  const response = await fetch(`/api${path}`, {
+  const response = await fetch(`${API_BASE}${path}`, {
     method,
     headers,
     body,

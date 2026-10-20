@@ -166,7 +166,7 @@ function BranchChat({ branch, space }: { branch: Branch; space: Space }) {
         onScroll={onScroll}
         className="relative min-h-0 flex-1 overflow-y-auto"
       >
-        <div className="mx-auto w-full max-w-[760px] px-5 pt-8 pb-6 sm:px-8">
+        <div className="mx-auto w-full max-w-190 px-5 pt-8 pb-6 sm:px-8">
           <div className="mb-7 flex items-center gap-3">
             <span
               className="grid size-10 shrink-0 place-items-center rounded-xl bg-accent-soft text-accent-ink"
@@ -318,7 +318,7 @@ function BranchChat({ branch, space }: { branch: Branch; space: Space }) {
       </div>
 
       <div className="shrink-0 px-4 pb-4 sm:px-6">
-        <div className="mx-auto w-full max-w-[760px]">
+        <div className="mx-auto w-full max-w-190">
           <div
             className={cn(
               'rounded-2xl border border-border bg-surface p-3 shadow-float transition-opacity',
@@ -343,7 +343,7 @@ function BranchChat({ branch, space }: { branch: Branch; space: Space }) {
                     : 'Ask anything. This branch will remember what matters.'
                 }
                 aria-label="Message this branch"
-                className="max-h-40 min-h-[36px] flex-1 resize-none bg-transparent px-1 py-2 text-sm leading-relaxed text-ink placeholder:text-muted/70 focus:outline-none disabled:cursor-not-allowed"
+                className="max-h-40 min-h-9 flex-1 resize-none bg-transparent px-1 py-2 text-sm leading-relaxed text-ink placeholder:text-muted/70 focus:outline-none disabled:cursor-not-allowed"
               />
               {streaming ? (
                 <button
