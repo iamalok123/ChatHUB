@@ -132,6 +132,9 @@ def memory_out(
         derived_from_id=_value(item, "derived_from_id"),
         has_embedding=has_embedding,
         stale_embedding=stale or not has_embedding,
+        status=_value(item, "status") or "active",
+        expires_at=_value(item, "expires_at"),
+        subject_key=_value(item, "subject_key"),
         created_at=_value(item, "created_at", ""),
     )
 

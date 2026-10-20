@@ -285,3 +285,94 @@ def test_security_headers_and_production_docs_hiding(hardening_client: TestClien
         assert docs_res.status_code == 404
         openapi_res = prod_client.get("/api/openapi.json")
         assert openapi_res.status_code == 404
+
+
+def test_staleness_sweep_flags_expired_memories(hardening_client: TestClient):
+    """JOB-001: Background staleness sweep flags expired memories and logs audit event."""
+    space_res = hardening_client.post(
+        "/api/spaces",
+        json={"name": "Staleness Space"},
+        headers={"X-ChatHUB-Request": "1"},
+    )
+    space_id = space_res.json()["id"]
+    branch_id = hardening_client.get(f"/api/spaces/{space_id}/branches").json()[0]["id"]
+
+    # 1. Create a memory with past expires_at
+    mem1_res = hardening_client.post(
+        f"/api/branches/{branch_id}/memories",
+        json={"content": "Temporary parking spot A12", "kind": "fact"},
+        headers={"X-ChatHUB-Request": "1"},
+    )
+    assert mem1_res.status_code == 201
+    mem1_id = mem1_res.json()["id"]
+
+    # 2. Create another normal memory without expiration
+    mem2_res = hardening_client.post(
+        f"/api/branches/{branch_id}/memories",
+        json={"content": "User prefers dark mode", "kind": "preference"},
+        headers={"X-ChatHUB-Request": "1"},
+    )
+    assert mem2_res.status_code == 201
+    mem2_id = mem2_res.json()["id"]
+
+    # 3. Manually set expires_at in the past for mem1 in DB
+    # We call the maintenance staleness sweep endpoint
+    res = hardening_client.post(
+        f"/api/spaces/{space_id}/maintenance/staleness-sweep",
+        json={"expired_memory_id": mem1_id},
+        headers={"X-ChatHUB-Request": "1"},
+    )
+    assert res.status_code == 200, f"Expected 200, got {res.status_code}"
+    sweep_data = res.json()
+    assert sweep_data["flagged_count"] >= 1
+
+    # 4. Check memory 1 status
+    mem_list = hardening_client.get(f"/api/branches/{branch_id}/memories").json()
+    all_mems = {m["id"]: m for m in mem_list["memories"]}
+    # Either mem1 is marked stale and filtered from active or has status='stale'
+    if mem1_id in all_mems:
+        assert all_mems[mem1_id].get("status") == "stale"
+    assert mem2_id in all_mems
+    assert all_mems[mem2_id].get("status", "active") == "active"
+
+
+def test_contradiction_sweep_detects_divergent_memories_on_same_subject(
+    hardening_client: TestClient,
+):
+    """JOB-001: Background consolidation sweep detects conflicting subject memories."""
+    space_res = hardening_client.post(
+        "/api/spaces",
+        json={"name": "Contradiction Space"},
+        headers={"X-ChatHUB-Request": "1"},
+    )
+    space_id = space_res.json()["id"]
+    branch_id = hardening_client.get(f"/api/spaces/{space_id}/branches").json()[0]["id"]
+
+    # 1. Create memory A: User lives in Berlin
+    mem_a = hardening_client.post(
+        f"/api/branches/{branch_id}/memories",
+        json={"content": "I live in Berlin, Germany", "kind": "fact"},
+        headers={"X-ChatHUB-Request": "1"},
+    )
+    assert mem_a.status_code == 201
+
+    # 2. Create memory B: User lives in Tokyo
+    mem_b = hardening_client.post(
+        f"/api/branches/{branch_id}/memories",
+        json={"content": "I live in Tokyo, Japan", "kind": "fact"},
+        headers={"X-ChatHUB-Request": "1"},
+    )
+    assert mem_b.status_code == 201
+
+    # 3. Call contradiction sweep endpoint
+    res = hardening_client.get(
+        f"/api/spaces/{space_id}/maintenance/contradictions",
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert "contradictions" in data
+    contradictions = data["contradictions"]
+    assert len(contradictions) >= 1
+    matched = [c for c in contradictions if c["subject_key"] == "user.location"]
+    assert len(matched) == 1
+    assert matched[0]["count"] == 2

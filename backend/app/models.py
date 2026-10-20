@@ -180,6 +180,9 @@ class MemoryOut(BaseModel):
     derived_from_id: str | None
     has_embedding: bool
     stale_embedding: bool
+    status: str = "active"
+    expires_at: str | None = None
+    subject_key: str | None = None
     created_at: str
 
 

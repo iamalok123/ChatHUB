@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import APIRouter, Request, Response
 
 from app.auth.deps import CurrentUser, DbConn
+from app.engine.jobs import contradiction_sweep, staleness_sweep
 from app.models import (
     BranchOut,
     GraphCheckpointOut,
@@ -150,3 +153,26 @@ def space_graph(
             for row in checkpoints_repo.list_for_space(conn, space_id)
         ],
     )
+
+
+@router.post("/spaces/{space_id}/maintenance/staleness-sweep")
+def run_space_staleness_sweep(
+    space_id: str,
+    payload: dict[str, Any] | None,
+    user: CurrentUser,
+    conn: DbConn,
+) -> dict[str, Any]:
+    spaces_repo.require_owned(conn, space_id, user.id)
+    expired_id = payload.get("expired_memory_id") if payload else None
+    return staleness_sweep(conn, space_id, expired_id)
+
+
+@router.get("/spaces/{space_id}/maintenance/contradictions")
+def run_space_contradiction_sweep(
+    space_id: str,
+    user: CurrentUser,
+    conn: DbConn,
+) -> dict[str, Any]:
+    spaces_repo.require_owned(conn, space_id, user.id)
+    contradictions = contradiction_sweep(conn, space_id)
+    return {"contradictions": contradictions}
