@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import time
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -121,6 +122,98 @@ def build_query(user_text: str, previous_assistant_text: str | None) -> str:
     return query[:MAX_QUERY_CHARS]
 
 
+def _lexical_search(
+    conn: Any,
+    query: str,
+    valid_ids: set[str],
+    items: list[dict[str, Any]],
+) -> dict[str, float]:
+    scores: dict[str, float] = {}
+    words = [w for w in re.findall(r"[a-zA-Z0-9]+", query.lower()) if len(w) > 2]
+    if words and valid_ids:
+        fts_query = " OR ".join(words[:8])
+        try:
+            cursor = conn.execute(
+                "SELECT memory_id, rank FROM memories_fts WHERE memories_fts MATCH ? LIMIT 50",
+                (fts_query,),
+            )
+            rows = cursor.fetchall()
+            for row in rows:
+                m_id = str(row[0])
+                if m_id in valid_ids:
+                    scores[m_id] = 1.0 / (1.0 + abs(float(row[1])))
+        except Exception:
+            pass
+
+    query_words = set(words)
+    if query_words:
+        for item in items:
+            mem_id = item.get("id")
+            if not mem_id or mem_id in scores:
+                continue
+            content_words = set(re.findall(r"\w+", str(item.get("content", "")).lower()))
+            overlap = len(query_words & content_words)
+            if overlap > 0:
+                scores[mem_id] = float(overlap) / max(1, len(content_words))
+
+    return scores
+
+
+def _apply_mmr(
+    candidates: list[dict[str, Any]],
+    slots: int,
+    memory_budget: int,
+    current_tokens: int,
+    lambda_mult: float = 0.7,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    selected: list[dict[str, Any]] = []
+    skipped: list[dict[str, Any]] = []
+    remaining = [c for c in candidates if c.get("_eligible")]
+    tokens_used = current_tokens
+
+    while remaining and len(selected) < slots:
+        best_candidate: dict[str, Any] | None = None
+        best_mmr_score = -float("inf")
+        best_index = -1
+
+        for idx, candidate in enumerate(remaining):
+            score = float(candidate.get("_score", 0.0))
+            cand_vec = candidate.get("_vector")
+
+            max_sim = 0.0
+            if cand_vec is not None and selected:
+                for sel in selected:
+                    sel_vec = sel.get("_vector")
+                    if sel_vec is not None:
+                        sim = float(cosine(cand_vec, sel_vec))
+                        if sim > max_sim:
+                            max_sim = sim
+
+            mmr_score = lambda_mult * score - (1.0 - lambda_mult) * max_sim
+
+            if mmr_score > best_mmr_score:
+                best_mmr_score = mmr_score
+                best_candidate = candidate
+                best_index = idx
+
+        if best_candidate is None:
+            break
+
+        remaining.pop(best_index)
+        cand_tokens = int(
+            best_candidate.get("tokens", estimate_tokens(str(best_candidate.get("content", ""))))
+        )
+        if tokens_used + cand_tokens > memory_budget:
+            best_candidate["reason"] = "skipped for memory budget"
+            skipped.append(best_candidate)
+            continue
+
+        selected.append(best_candidate)
+        tokens_used += cand_tokens
+
+    return selected, skipped
+
+
 async def retrieve_memories(
     conn: Any,
     branch: Any,
@@ -189,12 +282,32 @@ async def retrieve_memories(
             f"Memory similarity search was unavailable ({code}); pinned memories were kept."
         )
 
+    valid_ids = {m["id"] for m in memories if m.get("id")}
     qdrant_similarities: dict[str, float] = {}
     if qdrant and qdrant.is_enabled and query_vector is not None:
-        valid_ids = [m["id"] for m in memories if m.get("id")]
         qdrant_similarities = qdrant.search_similarities(
-            query_vector, valid_ids, limit=len(valid_ids)
+            query_vector, list(valid_ids), limit=len(valid_ids)
         )
+
+    lexical_scores = _lexical_search(conn, result.query, valid_ids, memories)
+    lex_sorted = sorted(lexical_scores.items(), key=lambda kv: -kv[1])
+    lex_ranks = {m_id: rank + 1 for rank, (m_id, _) in enumerate(lex_sorted)}
+
+    dense_candidates: list[tuple[str, float]] = []
+    for m in memories:
+        m_id = m.get("id")
+        if not m_id:
+            continue
+        if m_id in qdrant_similarities:
+            dense_candidates.append((m_id, qdrant_similarities[m_id]))
+        else:
+            vec = _vector(m, provider)
+            sim = (
+                cosine(query_vector, vec) if (query_vector is not None and vec is not None) else 0.0
+            )
+            dense_candidates.append((m_id, sim))
+    dense_sorted = sorted(dense_candidates, key=lambda kv: -kv[1])
+    dense_ranks = {m_id: rank + 1 for rank, (m_id, _) in enumerate(dense_sorted)}
 
     scored: list[dict[str, Any]] = []
     stale_count = 0
@@ -213,6 +326,7 @@ async def retrieve_memories(
                 reason="stale embedding",
             )
             entry["_item"] = item
+            entry["_vector"] = None
             entry["_eligible"] = bool(item.get("pinned"))
             entry["_score"] = float(item.get("importance", 0.5)) * 0.25 + recency * 0.15
             scored.append(entry)
@@ -226,6 +340,7 @@ async def retrieve_memories(
                 reason="similarity search unavailable",
             )
             entry["_item"] = item
+            entry["_vector"] = None
             entry["_eligible"] = bool(item.get("pinned"))
             entry["_score"] = float(item.get("importance", 0.5)) * 0.25 + recency * 0.15
             scored.append(entry)
@@ -236,7 +351,16 @@ async def retrieve_memories(
         else:
             similarity = cosine(query_vector, vector) if vector is not None else 0.0
 
-        score = 0.60 * similarity + 0.25 * item.get("importance", 0.5) + 0.15 * recency
+        if lexical_scores:
+            dense_rank = dense_ranks.get(mem_id, 100)
+            lex_rank = lex_ranks.get(mem_id, 100)
+            rrf = (1.0 / (60 + dense_rank)) + (1.0 / (60 + lex_rank))
+            rrf_norm = rrf / (2.0 / 61.0)
+            hybrid_sim = max(similarity, 0.6 * similarity + 0.4 * rrf_norm)
+        else:
+            hybrid_sim = similarity
+
+        score = 0.60 * hybrid_sim + 0.25 * float(item.get("importance", 0.5)) + 0.15 * recency
         entry = _detail(
             item,
             similarity=similarity,
@@ -245,6 +369,7 @@ async def retrieve_memories(
             reason=_selection_reason(item, similarity, score),
         )
         entry["_item"] = item
+        entry["_vector"] = vector
         entry["_score"] = score
         entry["_eligible"] = bool(item.get("pinned")) or score >= MIN_SCORE
         scored.append(entry)
@@ -271,22 +396,23 @@ async def retrieve_memories(
         used_tokens += int(entry["tokens"])
 
     slots = max(0, top_k - len(pinned))
-    for entry in unpinned:
-        if slots <= 0:
-            break
-        if not entry["_eligible"]:
-            continue
-        tokens = int(entry["tokens"])
-        if used_tokens + tokens > memory_budget:
-            entry["reason"] = "skipped for memory budget"
-            continue
+    mmr_selected, mmr_skipped = _apply_mmr(
+        candidates=unpinned,
+        slots=slots,
+        memory_budget=memory_budget,
+        current_tokens=used_tokens,
+        lambda_mult=0.7,
+    )
+    for entry in mmr_selected:
         result.selected.append(entry["_item"])
         result.selected_details.append(
             {key: value for key, value in entry.items() if not key.startswith("_")}
         )
         selected_ids.add(entry["id"])
-        used_tokens += tokens
-        slots -= 1
+        used_tokens += int(entry["tokens"])
+
+    for entry in mmr_skipped:
+        entry["reason"] = "skipped for memory budget"
 
     if used_tokens > memory_budget:
         result.warnings.append("Pinned memories exceeded the configured memory token budget.")
