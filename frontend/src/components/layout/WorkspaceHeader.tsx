@@ -93,7 +93,7 @@ export function WorkspaceHeader({ isMobile }: { isMobile: boolean }) {
           </div>
         ) : (
           <span className="text-sm font-medium tracking-tight text-ink">
-            {space?.name ?? 'BranchMind'}
+            {space?.name ?? 'ChatHUB'}
           </span>
         )}
       </div>

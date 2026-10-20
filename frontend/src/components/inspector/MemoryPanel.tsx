@@ -18,7 +18,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 
 import { api, errorMessage } from '../../api/client'
-import type { Branch, Memory, MemoryList, MemoryProposal } from '../../api/types'
+import type { Branch, Memory, MemoryList, MemoryProposal, Tombstone } from '../../api/types'
 import { cn } from '../../lib/cn'
 import { plural, sentenceCase } from '../../lib/format'
 import { useUiStore } from '../../store/ui'
@@ -217,6 +217,7 @@ function MemoryCard({
   onExclude,
   onInclude,
   onDelete,
+  onForget,
 }: {
   memory: Memory
   excluded?: boolean
@@ -228,6 +229,7 @@ function MemoryCard({
   onExclude: () => void
   onInclude: () => void
   onDelete: () => void
+  onForget?: () => void
 }) {
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const provenance = memory.inherited
@@ -245,6 +247,11 @@ function MemoryCard({
         <span className="rounded-md bg-accent-soft px-1.5 py-0.5 text-[8px] font-semibold tracking-wide text-accent-ink uppercase">
           {memory.kind}
         </span>
+        {memory.status && memory.status !== 'active' && (
+          <span className="rounded-md bg-warning-soft px-1 py-0.5 text-[8px] font-medium text-warning capitalize">
+            {memory.status}
+          </span>
+        )}
         {memory.pinned && !excluded && (
           <span className="inline-flex items-center gap-0.5 rounded-md bg-accent-soft px-1 py-0.5 text-[8px] font-medium text-accent-ink">
             <Pin size={8} aria-hidden /> pinned
@@ -315,7 +322,7 @@ function MemoryCard({
             </CompactAction>
           ) : confirmingDelete ? (
             <span className="ml-auto inline-flex items-center gap-1 text-[9px] text-danger">
-              Delete everywhere?
+              Delete?
               <button
                 type="button"
                 disabled={disabled || busy}
@@ -324,6 +331,17 @@ function MemoryCard({
               >
                 Delete
               </button>
+              {onForget && (
+                <button
+                  type="button"
+                  disabled={disabled || busy}
+                  onClick={onForget}
+                  title="Purge completely from storage, vector index, and traces"
+                  className="rounded bg-danger/80 px-1.5 py-0.5 font-medium text-white hover:bg-danger disabled:opacity-50"
+                >
+                  Forget
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => setConfirmingDelete(false)}
@@ -592,6 +610,7 @@ export function MemoryPanel({ branch }: { branch: Branch }) {
   const pushToast = useUiStore((state) => state.pushToast)
   const [data, setData] = useState<MemoryList | null>(null)
   const [proposals, setProposals] = useState<MemoryProposal[]>([])
+  const [tombstones, setTombstones] = useState<Tombstone[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -608,10 +627,12 @@ export function MemoryPanel({ branch }: { branch: Branch }) {
     Promise.all([
       api.get<MemoryList>(`/branches/${branch.id}/memories`, controller.signal),
       api.get<MemoryProposal[]>(`/branches/${branch.id}/proposals`, controller.signal),
+      api.get<Tombstone[]>(`/branches/${branch.id}/tombstones`, controller.signal).catch(() => []),
     ])
-      .then(([memories, pending]) => {
+      .then(([memories, pending, tombstonesList]) => {
         setData(memories)
         setProposals(pending)
+        setTombstones(tombstonesList)
         setLoading(false)
       })
       .catch((caught) => {
@@ -625,12 +646,14 @@ export function MemoryPanel({ branch }: { branch: Branch }) {
   const refresh = async () => {
     setRefreshing(true)
     try {
-      const [memories, pending] = await Promise.all([
+      const [memories, pending, tombstonesList] = await Promise.all([
         api.get<MemoryList>(`/branches/${branch.id}/memories`),
         api.get<MemoryProposal[]>(`/branches/${branch.id}/proposals`),
+        api.get<Tombstone[]>(`/branches/${branch.id}/tombstones`).catch(() => []),
       ])
       setData(memories)
       setProposals(pending)
+      setTombstones(tombstonesList)
       setError(null)
     } finally {
       setRefreshing(false)
@@ -730,6 +753,26 @@ export function MemoryPanel({ branch }: { branch: Branch }) {
         await api.delete(`/branches/${branch.id}/memories/${memory.id}`)
       },
       ['Memory deleted', 'The memory was removed from this space.'],
+    )
+  }
+
+  const forgetMemory = (memory: Memory) => {
+    void mutate(
+      `forget:${memory.id}`,
+      async () => {
+        await api.delete(`/memories/${memory.id}/forget`)
+      },
+      ['Memory forgotten', 'Purged completely from database, vector index, and traces.'],
+    )
+  }
+
+  const keepLocalTombstone = (tombstoneId: string) => {
+    void mutate(
+      `keep-local:${tombstoneId}`,
+      async () => {
+        await api.post(`/branches/${branch.id}/memories/${tombstoneId}/keep-local`)
+      },
+      ['Memory kept locally', 'Created branch-local copy from ancestor.'],
     )
   }
 
@@ -880,6 +923,36 @@ export function MemoryPanel({ branch }: { branch: Branch }) {
         </div>
       )}
 
+      {tombstones.length > 0 && !branch.archived && (
+        <section className="mb-3 rounded-xl border border-warning/30 bg-warning-soft/60 p-2.5">
+          <div className="flex items-center gap-1.5 text-[11px] font-medium text-warning">
+            <TriangleAlert size={13} aria-hidden />
+            <span>Removed upstream ({tombstones.length})</span>
+          </div>
+          <p className="mt-1 text-[10px] leading-relaxed text-muted">
+            An ancestor branch deleted these memories. Keep a local copy to retain them here.
+          </p>
+          <div className="mt-2 space-y-1.5">
+            {tombstones.map((t) => (
+              <div
+                key={t.id}
+                className="flex items-center justify-between gap-2 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[11px]"
+              >
+                <span className="truncate font-medium text-ink">{t.content}</span>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => keepLocalTombstone(t.id)}
+                  disabled={branch.archived}
+                >
+                  Keep local
+                </Button>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {adding && !branch.archived && (
         <div className="mb-3 rounded-xl border border-accent/35 bg-accent-soft/20 p-2.5">
           <p className="mb-2 text-[9px] font-medium tracking-wide text-accent-ink uppercase">
@@ -980,6 +1053,7 @@ export function MemoryPanel({ branch }: { branch: Branch }) {
                 onExclude={() => override(memory, 'exclude')}
                 onInclude={() => override(memory, 'include')}
                 onDelete={() => deleteMemory(memory)}
+                onForget={() => forgetMemory(memory)}
                 editor={
                   editingId === memory.id ? (
                     <MemoryEditor

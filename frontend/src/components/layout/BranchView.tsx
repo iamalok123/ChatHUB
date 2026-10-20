@@ -370,11 +370,16 @@ function BranchChat({ branch, space }: { branch: Branch; space: Space }) {
             </div>
             <div className="mt-1 flex items-center justify-between gap-2 border-t border-border/70 px-1 pt-2">
               <div className="flex items-center gap-1.5">
+                {branch.ephemeral && (
+                  <span className="rounded-full bg-subtle px-2 py-0.5 text-[9px] font-medium text-muted">
+                    Ephemeral
+                  </span>
+                )}
                 <span className="rounded-full bg-accent-soft px-2 py-0.5 text-[9px] font-medium text-accent-ink">
                   {sentenceCase(branch.memory_mode)} memory
                 </span>
                 <span className="text-[9px] text-muted">
-                  {plural(branch.memory_count, 'memory', 'memories')}
+                  Using {plural(branch.memory_count, 'memory', 'memories')}
                 </span>
                 {streaming && (
                   <span className="animate-soft-pulse text-[9px] text-muted">

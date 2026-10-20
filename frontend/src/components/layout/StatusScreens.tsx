@@ -11,7 +11,7 @@ export function SplashScreen() {
     <main className="grid min-h-svh place-items-center bg-bg px-6">
       <div className="flex animate-fade-in flex-col items-center">
         <BrandMark className="size-11 rounded-2xl" />
-        <p className="mt-4 text-sm font-medium tracking-tight text-ink">BranchMind</p>
+        <p className="mt-4 text-sm font-medium tracking-tight text-ink">ChatHUB</p>
         <p className="mt-1 animate-soft-pulse text-[11px] text-muted">
           Opening your local workspace
         </p>
@@ -49,7 +49,7 @@ export function ConnectionScreen() {
             The backend is out of reach
           </h1>
           <p className="mt-2 text-sm leading-relaxed text-muted">
-            BranchMind could not reach its local API. Start both servers with{' '}
+            ChatHUB could not reach its local API. Start both servers with{' '}
             <code className="rounded bg-subtle px-1.5 py-0.5 font-mono text-[11px] text-ink">
               ./run.ps1
             </code>{' '}

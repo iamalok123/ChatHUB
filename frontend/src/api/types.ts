@@ -65,6 +65,7 @@ export type Branch = {
   archived: boolean
   created_at: string
   is_root: boolean
+  ephemeral?: boolean
   message_count: number
   memory_count: number
 }
@@ -263,7 +264,18 @@ export type Memory = {
   derived_from_id: string | null
   has_embedding: boolean
   stale_embedding: boolean
+  status?: 'active' | 'stale' | 'superseded' | 'tombstoned' | string
+  expires_at?: string | null
+  subject_key?: string | null
   created_at: string
+}
+
+export type Tombstone = {
+  id: string
+  content: string
+  kind: string
+  origin_branch_id: string
+  deleted_at: string
 }
 
 export type MemoryList = {

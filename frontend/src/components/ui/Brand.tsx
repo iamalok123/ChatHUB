@@ -21,7 +21,7 @@ export function Brand({ className }: { className?: string }) {
     <span className={cn('flex items-center gap-2.5', className)}>
       <BrandMark />
       <span className="text-[17px] font-semibold tracking-[-0.02em] text-ink">
-        BranchMind
+        ChatHUB
       </span>
     </span>
   )

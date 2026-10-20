@@ -343,7 +343,7 @@ export function Sidebar({ mobile, onNavigate }: SidebarProps) {
         <div className="flex items-center gap-2.5">
           <BrandMark className="size-8 rounded-[10px]" />
           <span className="text-[15px] font-semibold tracking-[-0.02em] text-ink">
-            BranchMind
+            ChatHUB
           </span>
         </div>
         {mobile && (

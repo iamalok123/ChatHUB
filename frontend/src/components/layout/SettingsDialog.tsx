@@ -249,7 +249,7 @@ function AiSettings() {
       <div className="mb-5 flex items-start justify-between gap-4">
         <SectionHeading
           title="AI status"
-          body="BranchMind uses Gemini only on the server. In mock mode, no AI request leaves this machine."
+          body="ChatHUB uses Gemini only on the server. In mock mode, no AI request leaves this machine."
         />
         <Button
           variant="secondary"
@@ -357,7 +357,7 @@ function AppearanceSettings() {
     <div>
       <SectionHeading
         title="Appearance"
-        body="BranchMind respects your system theme until you choose a preference."
+        body="ChatHUB respects your system theme until you choose a preference."
       />
       <div className="grid gap-2.5 sm:grid-cols-3">
         {themeOptions.map((option) => {
@@ -451,7 +451,7 @@ function DataSettings() {
       const data = await api.get<unknown>(`/spaces/${space.id}/export`)
       downloadJson(
         data,
-        `branchmind-${slugify(space.name)}-${new Date().toISOString().slice(0, 10)}.json`,
+        `chathub-${slugify(space.name)}-${new Date().toISOString().slice(0, 10)}.json`,
       )
       pushToast('success', 'Space exported', 'The JSON file is ready in your downloads.')
     } catch (caught) {
@@ -472,7 +472,7 @@ function DataSettings() {
       const text = await file.text()
       const parsed = JSON.parse(text) as unknown
       if (!parsed || typeof parsed !== 'object') {
-        throw new Error('The selected file is not a BranchMind export.')
+        throw new Error('The selected file is not a ChatHUB export.')
       }
       const result = await importSpace(parsed)
       pushToast(

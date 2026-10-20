@@ -423,7 +423,7 @@ function PaletteContent() {
           </span>
           <span className="flex items-center gap-1">
             <GitBranch size={10} aria-hidden />
-            {space?.name ?? 'BranchMind'}
+            {space?.name ?? 'ChatHUB'}
           </span>
         </div>
       </div>

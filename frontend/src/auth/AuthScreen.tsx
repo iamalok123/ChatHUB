@@ -125,7 +125,7 @@ export function AuthScreen() {
               Conversations branch. Memory should too.
             </h1>
             <p className="mt-6 max-w-lg text-[15px] leading-relaxed text-muted">
-              BranchMind makes every thread a branch, every preference a versioned
+              ChatHUB makes every thread a branch, every preference a versioned
               memory, and every answer explainable.
             </p>
 
@@ -148,14 +148,14 @@ export function AuthScreen() {
 
           <p className="relative z-10 flex items-center gap-2 text-[11px] text-muted">
             <LockKeyhole size={13} aria-hidden />
-            Local-first. Your conversations stay in a SQLite file on this machine.
+            Local-first. Your conversations stay safe and private.
           </p>
         </section>
 
         <section className="relative flex min-h-svh flex-col px-5 py-8 sm:px-10 lg:px-12 xl:px-20">
           <div className="mb-12 flex items-center gap-2 lg:hidden">
             <BrandMark />
-            <span className="text-[17px] font-semibold tracking-tight">BranchMind</span>
+            <span className="text-[17px] font-semibold tracking-tight">ChatHUB</span>
           </div>
 
           <div className="m-auto w-full max-w-105 animate-fade-in">
@@ -311,7 +311,7 @@ export function AuthScreen() {
             </div>
 
             <p className="mt-6 text-center text-[10px] leading-relaxed text-muted">
-              BranchMind runs on 127.0.0.1. Sessions are stored in an HttpOnly cookie.
+              ChatHUB runs locally and securely. Sessions are stored in an HttpOnly cookie.
             </p>
           </div>
         </section>

@@ -29,7 +29,7 @@ export async function readApiError(response: Response): Promise<ApiError> {
 export function errorMessage(error: unknown): string {
   if (error instanceof ApiError) return error.message
   if (error instanceof TypeError) {
-    return 'Cannot reach the BranchMind backend. Check that it is running.'
+    return 'Cannot reach the ChatHUB backend. Check that it is running.'
   }
   if (error instanceof Error && error.message) return error.message
   return 'Something went wrong. Please try again.'
@@ -51,6 +51,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     body = JSON.stringify(options.body)
   }
   if (method !== 'GET') {
+    headers.set('X-ChatHUB-Request', '1')
     headers.set('X-BranchMind-Request', '1')
   }
 

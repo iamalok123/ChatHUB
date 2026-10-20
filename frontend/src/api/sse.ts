@@ -41,6 +41,7 @@ export async function streamApi(path: string, options: StreamOptions): Promise<v
   const method = options.method ?? 'POST'
   const headers = new Headers({
     Accept: 'text/event-stream',
+    'X-ChatHUB-Request': '1',
     'X-BranchMind-Request': '1',
   })
   let body: string | undefined
