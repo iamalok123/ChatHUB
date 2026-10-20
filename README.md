@@ -1,6 +1,6 @@
-# ChartHub
+# ChatHUB
 
-ChartHub treats conversations like Git repositories: a **Space** is the repository, a **Branch** is an isolated conversational timeline, and **Memories** are versioned, inherited, selectable, and mergeable.
+ChatHUB treats conversations like Git repositories: a **Space** is the repository, a **Branch** is an isolated conversational timeline, and **Memories** are versioned, inherited, selectable, and mergeable.
 
 The authoritative build contract lives in [AGENTS.md](AGENTS.md). Architecture decisions are recorded in [docs/DECISIONS.md](docs/DECISIONS.md).
 
@@ -176,7 +176,7 @@ All suites pass with 100% success rate:
 
 ## Production Deployment Guide
 
-ChartHub is fully engineered for split-architecture production deployment:
+ChatHUB is fully engineered for split-architecture production deployment:
 * **Frontend:** Deployed to **Vercel** as a high-performance static SPA with automated API rewrites.
 * **Backend:** Deployed to **Render** or **Railway** as a containerized FastAPI service.
 * **Database:** Serverless **PostgreSQL** hosted on **NeonDB** (zero-sleep architecture).
@@ -214,7 +214,7 @@ ChartHub is fully engineered for split-architecture production deployment:
 1. Sign up at [qdrant.tech](https://cloud.qdrant.io) and create a free 1GB cluster.
 2. Note your Cluster URL (e.g., `https://xxxx.cloud.qdrant.io:6333`) and generate an API key.
 3. Set `QDRANT_URL` and `QDRANT_API_KEY` in your backend environment variables.
-*(Note: If omitted, ChartHub falls back seamlessly to internal NumPy cosine similarity.)*
+*(Note: If omitted, ChatHUB falls back seamlessly to internal NumPy cosine similarity.)*
 
 ### 3. Deploy Backend to Render or Railway
 
@@ -250,7 +250,7 @@ ChartHub is fully engineered for split-architecture production deployment:
 
 ---
 
-## Renaming the Base Directory to "ChartHub" on Windows
+## Renaming the Base Directory to "ChatHUB" on Windows
 
 Because Windows locks active working directories when command prompts or IDEs have handles open, follow these quick steps:
 
@@ -258,7 +258,7 @@ Because Windows locks active working directories when command prompts or IDEs ha
 2. Close the current terminal or switch to the parent directory:
    ```powershell
    cd ..
-   Rename-Item -Path "New folder" -NewName "ChartHub"
-   cd ChartHub
+   Rename-Item -Path "New folder" -NewName "ChatHUB"
+   cd ChatHUB
    ```
-3. Open the newly renamed `ChartHub` directory in your editor or terminal. All configurations, Git history, and dependencies remain completely intact.
+3. Open the newly renamed `ChatHUB` directory in your editor or terminal. All configurations, Git history, and dependencies remain completely intact.

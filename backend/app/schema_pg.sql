@@ -1,4 +1,4 @@
--- ChartHub PostgreSQL Schema for NeonDB and standard PostgreSQL
+-- ChatHUB PostgreSQL Schema for NeonDB and standard PostgreSQL
 
 CREATE TABLE IF NOT EXISTS users(
   id TEXT PRIMARY KEY,

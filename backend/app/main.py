@@ -50,7 +50,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         finally:
             conn.close()
         logger.info(
-            "ChartHub ready in %s mode on %s:%s (db: %s, qdrant: %s)",
+            "ChatHUB ready in %s mode on %s:%s (db: %s, qdrant: %s)",
             settings.effective_llm_mode,
             settings.app_host,
             settings.backend_port,
@@ -63,7 +63,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             await provider.close()
 
     app = FastAPI(
-        title="ChartHub",
+        title="ChatHUB",
         version=__version__,
         lifespan=lifespan,
         docs_url="/api/docs",
