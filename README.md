@@ -28,19 +28,36 @@ The authoritative build contract lives in [AGENTS.md](AGENTS.md). Architecture d
 ChatHUB frontend and backend are completely decoupled and run in separate terminals:
 
 ### 1. Run Backend (Terminal 1)
+
+**One-Time Setup (First Run Only):**
 ```powershell
 cd backend
-# On first run, create virtual environment & install requirements:
-# py -3.12 -m venv .venv
-# .venv\Scripts\pip install -r requirements.txt
-.venv\Scripts\python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+py -3.12 -m venv .venv                         # Creates isolated Python 3.12 virtual environment
+.venv\Scripts\pip install -r requirements.txt  # Installs FastAPI, Uvicorn, Gemini SDK, etc.
 ```
-Backend will be available at `http://127.0.0.1:8000` (Health check: `http://127.0.0.1:8000/api/health`).
+
+**Single Command to Start Backend (Daily Development):**
+```powershell
+cd backend
+.venv\Scripts\uvicorn app.main:app --reload
+```
+*What this command does:*
+- Starts the FastAPI application with auto-reload enabled for developer hot-reloading.
+- Reads configuration and secrets strictly from `backend/.env`.
+- Automatically initializes the database and applies all schema migrations (`schema_pg.sql` or SQLite).
+- Binds to `http://127.0.0.1:8000` (Health check endpoint: `http://127.0.0.1:8000/api/health`).
 
 ### 2. Run Frontend (Terminal 2)
+
+**One-Time Setup (First Run Only):**
 ```powershell
 cd frontend
-# On first run: npm install
+npm install                                    # Installs React 19, Vite, Tailwind CSS, etc.
+```
+
+**Single Command to Start Frontend:**
+```powershell
+cd frontend
 npm run dev
 ```
 Frontend UI will be live at `http://127.0.0.1:5173`.
@@ -86,8 +103,7 @@ ChatHUB/
 │   ├── .env.example           # Standalone backend environment template
 │   ├── requirements.txt       # Python dependencies
 │   ├── pyproject.toml         # Packaging & ruff configuration
-│   ├── Procfile               # Container & platform entrypoint
-│   ├── railway.json           # Railway platform blueprint
+│   ├── railway.json           # Railway platform blueprint (builder & startCommand)
 │   ├── render.yaml            # Render platform blueprint
 │   ├── app/                   # Clean production source code (zero test clutter)
 │   │   ├── main.py            # App factory, middleware, lifespans
@@ -239,7 +255,7 @@ ChatHUB is fully engineered for split-architecture production deployment:
 
 #### Option B: Railway
 1. Create a new project on [railway.app](https://railway.app) from your GitHub repo.
-2. Set Root Directory to `/backend` (Railway detects `backend/Procfile` and `backend/railway.json`).
+2. Set Root Directory to `/backend` (Railway automatically detects `backend/railway.json`).
 3. Add the same Environment Variables listed above.
 
 ### 4. Deploy Frontend to Vercel

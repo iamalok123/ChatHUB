@@ -23,7 +23,6 @@ ChatHUB/
 │   ├── .env.example           # Standalone backend environment template
 │   ├── requirements.txt       # Production dependencies
 │   ├── pyproject.toml         # Python packaging & ruff configuration
-│   ├── Procfile               # Railway & container entrypoint
 │   ├── railway.json           # Railway platform blueprint
 │   ├── render.yaml            # Render platform blueprint
 │   ├── app/                   # Clean production source code (no test clutter)
@@ -233,7 +232,7 @@ Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/health"
     - `COOKIE_SECURE` = `true`
     - `ENVIRONMENT` = `production`
 - **Railway:**
-  - Import repo and set Root Directory to `backend` (Railway reads `backend/Procfile` and `backend/railway.json`).
+  - Import repo and set Root Directory to `backend` (Railway automatically detects `backend/railway.json`).
   - Add the same environment variables.
 
 ### Step 4: Deploy Frontend (Vercel)
