@@ -168,6 +168,16 @@ def update_payload(
     conn.commit()
 
 
+def update_trace(
+    conn: sqlite3.Connection, commit_id: str, *, trace_json: str
+) -> None:
+    conn.execute(
+        "UPDATE commits SET trace_json = ? WHERE id = ?",
+        (trace_json, commit_id),
+    )
+    conn.commit()
+
+
 def count_messages(conn: sqlite3.Connection, commit_ids: list[str]) -> int:
     if not commit_ids:
         return 0

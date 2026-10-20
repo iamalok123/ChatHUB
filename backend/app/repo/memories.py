@@ -19,6 +19,7 @@ def create(
     embedding_dim: int | None = None,
     supersedes_id: str | None = None,
     derived_from_id: str | None = None,
+    commit: bool = True,
 ) -> sqlite3.Row:
     memory_id = new_id()
     conn.execute(
@@ -45,7 +46,8 @@ def create(
             utc_now(),
         ),
     )
-    conn.commit()
+    if commit:
+        conn.commit()
     row = get(conn, memory_id)
     assert row is not None
     return row
@@ -53,6 +55,40 @@ def create(
 
 def get(conn: sqlite3.Connection, memory_id: str) -> sqlite3.Row | None:
     return conn.execute("SELECT * FROM memories WHERE id = ?", (memory_id,)).fetchone()
+
+
+def update(
+    conn: sqlite3.Connection,
+    memory_id: str,
+    *,
+    content: str,
+    kind: str,
+    importance: float,
+    embedding: bytes | None,
+    embedding_model: str | None,
+    embedding_dim: int | None,
+) -> sqlite3.Row:
+    conn.execute(
+        """
+        UPDATE memories
+        SET content = ?, kind = ?, importance = ?, embedding = ?,
+            embedding_model = ?, embedding_dim = ?
+        WHERE id = ?
+        """,
+        (
+            content,
+            kind,
+            importance,
+            embedding,
+            embedding_model,
+            embedding_dim,
+            memory_id,
+        ),
+    )
+    conn.commit()
+    row = get(conn, memory_id)
+    assert row is not None
+    return row
 
 
 def soft_delete(conn: sqlite3.Connection, memory_id: str) -> None:

@@ -9,6 +9,8 @@ from fastapi.responses import StreamingResponse
 from app.auth.deps import CurrentUser
 from app.engine.chat import ChatStreamer
 from app.engine.context import ComposedContext, compose_context
+from app.engine.extraction import MemoryExtractor
+from app.engine.retrieval import RetrievalResult, retrieve_memories
 from app.errors import ApiError, not_found
 from app.models import ChatRequest
 from app.repo import branches as branches_repo
@@ -41,7 +43,8 @@ def _compose(
     space: sqlite3.Row,
     history: list[sqlite3.Row],
     current_user_text: str,
-) -> tuple[ComposedContext, list[dict[str, object]]]:
+    retrieval: RetrievalResult,
+) -> tuple[ComposedContext, dict[str, object]]:
     settings = request.app.state.settings
     started = time.perf_counter()
     context = compose_context(
@@ -49,26 +52,38 @@ def _compose(
         branch=branch,
         history=history,
         current_user_text=current_user_text,
-        memories=[],
+        memories=retrieval.selected,
         history_budget=settings.history_token_budget,
         memory_budget=settings.memory_token_budget,
     )
     compose_ms = int((time.perf_counter() - started) * 1000)
-    steps: list[dict[str, object]] = [
-        {
-            "phase": "retrieve",
-            "status": "done",
-            "duration_ms": 0,
-            "payload": {"selected": 0, "considered": 0},
-        },
-        {
-            "phase": "compose",
-            "status": "done",
-            "duration_ms": compose_ms,
-            "payload": context.stats,
-        },
-    ]
-    return context, steps
+    return context, {
+        "phase": "compose",
+        "status": "done",
+        "duration_ms": compose_ms,
+        "payload": context.stats,
+    }
+
+
+def _previous_assistant(history: list[sqlite3.Row]) -> str | None:
+    for row in reversed(history):
+        if row["role"] == "assistant" and (row["content"] or "").strip():
+            return row["content"]
+    return None
+
+
+def _retrieval_trace(retrieval: RetrievalResult) -> dict[str, object]:
+    return {
+        "query": retrieval.query,
+        "query_tokens": retrieval.query_tokens,
+        "used_tokens": retrieval.used_tokens,
+        "top_k": retrieval.top_k,
+        "duration_ms": retrieval.duration_ms,
+        "selected": retrieval.selected_details,
+        "considered": retrieval.considered,
+        "excluded": retrieval.excluded,
+        "warnings": retrieval.warnings,
+    }
 
 
 def _stream(
@@ -80,6 +95,8 @@ def _stream(
     steps: list[dict[str, object]],
     assistant_commit_id: str,
     current_user_commit_id: str | None,
+    current_user_text: str,
+    retrieval: RetrievalResult,
     regenerated_from: str | None = None,
     branch_event: dict[str, str] | None = None,
 ) -> StreamingResponse:
@@ -95,6 +112,13 @@ def _stream(
         initial_steps=steps,
         regenerated_from=regenerated_from,
         branch_event=branch_event,
+        retrieval=_retrieval_trace(retrieval),
+        current_user_text=current_user_text,
+        extractor=MemoryExtractor(
+            request.app.state.database,
+            request.app.state.provider,
+            request.app.state.settings,
+        ),
     )
     return StreamingResponse(
         streamer.stream(),
@@ -139,13 +163,34 @@ async def chat(
                 "head_conflict",
                 "The branch changed while sending. Refresh and try again.",
             ) from exc
-        context, steps = _compose(
+        provider = request.app.state.provider
+        settings = request.app.state.settings
+        retrieval = await retrieve_memories(
+            conn,
+            branch,
+            user_text=payload.message,
+            previous_assistant_text=_previous_assistant(history),
+            provider=provider,
+            top_k=branch["top_k"],
+            memory_budget=settings.memory_token_budget,
+        )
+        context, compose_step = _compose(
             request=request,
             branch=branch,
             space=space,
             history=history,
             current_user_text=payload.message,
+            retrieval=retrieval,
         )
+        steps: list[dict[str, object]] = [
+            {
+                "phase": "retrieve",
+                "status": "done",
+                "duration_ms": retrieval.duration_ms,
+                "payload": retrieval.step_payload(),
+            },
+            compose_step,
+        ]
         try:
             assistant_commit = commits_repo.append_at_head(
                 conn,
@@ -173,6 +218,8 @@ async def chat(
         steps=steps,
         assistant_commit_id=assistant_commit["id"],
         current_user_commit_id=user_commit["id"],
+        current_user_text=payload.message,
+        retrieval=retrieval,
     )
 
 
@@ -220,13 +267,35 @@ async def regenerate(
                 "invalid_fork_point",
                 "The message before this reply is no longer visible",
             )
-        context, steps = _compose(
+        history_before_current = history[:-1]
+        provider = request.app.state.provider
+        settings = request.app.state.settings
+        retrieval = await retrieve_memories(
+            conn,
+            new_branch,
+            user_text=parent["content"],
+            previous_assistant_text=_previous_assistant(history_before_current),
+            provider=provider,
+            top_k=new_branch["top_k"],
+            memory_budget=settings.memory_token_budget,
+        )
+        context, compose_step = _compose(
             request=request,
             branch=new_branch,
             space=space,
-            history=history[:-1],
+            history=history_before_current,
             current_user_text=parent["content"],
+            retrieval=retrieval,
         )
+        steps: list[dict[str, object]] = [
+            {
+                "phase": "retrieve",
+                "status": "done",
+                "duration_ms": retrieval.duration_ms,
+                "payload": retrieval.step_payload(),
+            },
+            compose_step,
+        ]
         assistant_commit = commits_repo.append_at_head(
             conn,
             space_id=branch["space_id"],
@@ -247,6 +316,8 @@ async def regenerate(
         steps=steps,
         assistant_commit_id=assistant_commit["id"],
         current_user_commit_id=parent["id"],
+        current_user_text=parent["content"],
+        retrieval=retrieval,
         regenerated_from=target["id"],
         branch_event={
             "branch_id": new_branch["id"],

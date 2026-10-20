@@ -127,6 +127,82 @@ class TraceOut(BaseModel):
     trace_version: int | None = None
 
 
+MemoryKind = Literal["fact", "preference", "decision", "profile", "summary", "task"]
+MemoryContent = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=4000)
+]
+
+
+class MemoryCreate(StrictModel):
+    content: MemoryContent
+    kind: MemoryKind = "fact"
+    importance: Annotated[float, Field(ge=0.0, le=1.0)] = 0.5
+
+
+class MemoryUpdate(StrictModel):
+    content: MemoryContent | None = None
+    kind: MemoryKind | None = None
+    importance: Annotated[float, Field(ge=0.0, le=1.0)] | None = None
+
+
+class MemoryOverrideRequest(StrictModel):
+    action: Literal["exclude", "include", "pin", "unpin", "edit"]
+    content: MemoryContent | None = None
+
+
+class MemoryOut(BaseModel):
+    id: str
+    content: str
+    kind: str
+    importance: float
+    pinned: bool
+    edited: bool
+    inherited: bool
+    excluded: bool
+    origin_branch_id: str
+    origin_branch_name: str
+    source_commit_id: str
+    supersedes_id: str | None
+    derived_from_id: str | None
+    has_embedding: bool
+    stale_embedding: bool
+    created_at: str
+
+
+class MemoryListOut(BaseModel):
+    memories: list[MemoryOut]
+    excluded: list[MemoryOut]
+
+
+class ProposalOut(BaseModel):
+    id: str
+    branch_id: str
+    commit_id: str
+    content: str
+    kind: str
+    importance: float
+    status: str
+    reason: str
+    conflicts_with_memory_id: str | None
+    conflict_content: str | None
+    conflict_kind: str | None
+    accepted_memory_id: str | None
+    resolution: str | None
+    created_at: str
+
+
+class ProposalAcceptRequest(StrictModel):
+    content: MemoryContent | None = None
+    kind: MemoryKind | None = None
+    importance: Annotated[float, Field(ge=0.0, le=1.0)] | None = None
+    resolution: Literal["replace", "keep_both"] = "keep_both"
+
+
+class ProposalAcceptOut(BaseModel):
+    proposal: ProposalOut
+    memory: MemoryOut
+
+
 class UserRecord(BaseModel):
     id: str
     email: str

@@ -13,6 +13,7 @@ from app.clock import utc_now
 from app.config import Settings
 from app.db import Database
 from app.engine.context import ComposedContext
+from app.engine.extraction import ExtractionResult, MemoryExtractor
 from app.llm.base import Completion, LLMProvider, ProviderError, StreamEvent
 from app.repo import commits
 
@@ -42,6 +43,9 @@ class ChatStreamer:
         initial_steps: list[dict[str, Any]],
         regenerated_from: str | None = None,
         branch_event: dict[str, str] | None = None,
+        retrieval: dict[str, Any] | None = None,
+        current_user_text: str = "",
+        extractor: MemoryExtractor | None = None,
     ) -> None:
         self.database = database
         self.provider = provider
@@ -54,6 +58,10 @@ class ChatStreamer:
         self.initial_steps = initial_steps
         self.regenerated_from = regenerated_from
         self.branch_event = branch_event
+        self.retrieval = retrieval or {}
+        self.current_user_text = current_user_text
+        self.extractor = extractor
+        self.last_trace: dict[str, Any] | None = None
 
     async def stream(self) -> AsyncIterator[str]:
         if self.branch_event:
@@ -257,6 +265,41 @@ class ChatStreamer:
             )
             return
 
+        if not answer.strip():
+            empty = ProviderError(
+                "empty_response",
+                "The AI provider returned an empty reply.",
+                partial_thinking=thinking,
+                retryable=False,
+            )
+            final_step = {
+                "phase": "generate",
+                "status": "error",
+                "duration_ms": generate_ms,
+                "payload": {"provider": self.provider.name, "error": empty.code},
+            }
+            status = self._finalize(
+                text=answer,
+                thinking=thinking,
+                completion=completion,
+                error=empty,
+                generate_started=generate_started,
+                final_step=final_step,
+            )
+            finalized = True
+            yield sse("step", final_step)
+            yield sse(
+                "error",
+                {
+                    "code": empty.code,
+                    "message": empty.message,
+                    "retryable": False,
+                    "partial_commit_id": self.assistant_commit_id,
+                    "status": status,
+                },
+            )
+            return
+
         synthetic = False
         if not thinking.strip():
             thinking = (
@@ -291,6 +334,55 @@ class ChatStreamer:
         )
         finalized = True
         yield sse("step", final_step)
+
+        if self.extractor is not None and answer and status == "complete":
+            yield sse(
+                "step",
+                {
+                    "phase": "extract",
+                    "status": "running",
+                    "duration_ms": 0,
+                    "payload": {"mode": self.branch["memory_mode"]},
+                },
+            )
+            try:
+                extraction = await self.extractor.extract(
+                    branch_id=self.branch["id"],
+                    assistant_commit_id=self.assistant_commit_id,
+                    user_text=self.current_user_text,
+                    assistant_text=answer,
+                )
+            except Exception:
+                logger.exception("Memory extraction crashed")
+                extraction = ExtractionResult(
+                    mode=self.branch["memory_mode"],
+                    status="error",
+                    operations=[{"op": "extraction_error", "code": "internal_error"}],
+                    warnings=["Memory extraction failed unexpectedly."],
+                )
+            extract_step = {
+                "phase": "extract",
+                "status": extraction.status,
+                "duration_ms": extraction.duration_ms,
+                "payload": {
+                    "mode": extraction.mode,
+                    "proposals": len(extraction.proposals),
+                    "auto_saved": len(extraction.auto_saved),
+                    "warnings": extraction.warnings,
+                },
+            }
+            self._record_extraction(extraction, extract_step)
+            yield sse("step", extract_step)
+            if extraction.proposals or extraction.auto_saved:
+                yield sse(
+                    "proposals",
+                    {
+                        "mode": extraction.mode,
+                        "proposals": extraction.proposals,
+                        "auto_saved": extraction.auto_saved,
+                    },
+                )
+
         yield sse(
             "done",
             {
@@ -343,6 +435,7 @@ class ChatStreamer:
         if final_step is not None:
             steps.append(final_step)
 
+        retrieval_warnings = list(self.retrieval.get("warnings", []))
         trace = {
             "version": TRACE_VERSION,
             "provider": self.provider.name,
@@ -356,11 +449,19 @@ class ChatStreamer:
             "thinking_summary": model_thinking,
             "thinking_source": thinking_source,
             "context": self.context.stats,
-            "retrieved_memories": [],
-            "considered_memories": [],
-            "excluded_memories": [],
+            "memory_mode": self.branch["memory_mode"],
+            "retrieval": {
+                "query": self.retrieval.get("query", ""),
+                "query_tokens": self.retrieval.get("query_tokens", 0),
+                "used_tokens": self.retrieval.get("used_tokens", 0),
+                "top_k": self.retrieval.get("top_k", self.branch["top_k"]),
+                "duration_ms": self.retrieval.get("duration_ms", 0),
+            },
+            "retrieved_memories": self.retrieval.get("selected", []),
+            "considered_memories": self.retrieval.get("considered", []),
+            "excluded_memories": self.retrieval.get("excluded", []),
             "memory_operations": [],
-            "warnings": [],
+            "warnings": retrieval_warnings,
             "usage": completion.usage if completion is not None else {},
             "finish_reason": completion.finish_reason if completion is not None else None,
             "steps": steps,
@@ -389,6 +490,7 @@ class ChatStreamer:
             if thinking_source == "synthetic_context"
             else (model_thinking or None)
         )
+        self.last_trace = trace
         try:
             conn = self.database.connect()
             try:
@@ -410,3 +512,41 @@ class ChatStreamer:
         except Exception:
             logger.exception("Failed to persist assistant commit %s", self.assistant_commit_id)
         return status
+
+    def _record_extraction(
+        self, extraction: ExtractionResult, extract_step: dict[str, Any]
+    ) -> None:
+        trace = self.last_trace
+        if trace is None:
+            return
+        trace["memory_mode"] = extraction.mode
+        trace["memory_operations"] = extraction.operations
+        trace["steps"] = [*trace.get("steps", []), extract_step]
+        trace["extraction"] = {
+            "status": extraction.status,
+            "mode": extraction.mode,
+            "proposals": len(extraction.proposals),
+            "auto_saved": len(extraction.auto_saved),
+        }
+        warnings = list(trace.get("warnings", []))
+        for warning in extraction.warnings:
+            if warning not in warnings:
+                warnings.append(warning)
+        trace["warnings"] = warnings
+        try:
+            conn = self.database.connect()
+            try:
+                commits.update_trace(
+                    conn,
+                    self.assistant_commit_id,
+                    trace_json=json.dumps(
+                        trace, ensure_ascii=False, separators=(",", ":")
+                    ),
+                )
+            finally:
+                conn.close()
+        except Exception:
+            logger.exception(
+                "Failed to update extraction trace for %s",
+                self.assistant_commit_id,
+            )

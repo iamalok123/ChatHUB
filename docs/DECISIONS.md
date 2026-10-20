@@ -89,3 +89,9 @@ This file records decisions and deviations from the original local-only, Ollama-
 **Decision:** Assistant commits are inserted with `status=streaming` before the provider call and finalized as `complete`, `partial`, or `error`. The transient value is never used in a final trace.
 
 **Reason:** The UI and API need to distinguish an in-flight reply from an interrupted one. A placeholder row also guarantees a stable assistant commit id for partial persistence and SSE error reporting.
+
+## D-015: Two-phase assistant trace around memory extraction
+
+**Decision:** Persist the assistant reply, generated trace, and final status before extraction starts. Extraction then appends its step, operations, and warnings to the trace. The `done` SSE event is emitted after extraction so clients receive proposals first.
+
+**Reason:** A provider extraction failure must never roll back or fail the assistant reply. Persisting first keeps the reply durable even if the client disconnects during extraction, while the late trace update preserves a complete Why view.

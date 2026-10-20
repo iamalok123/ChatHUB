@@ -3,7 +3,9 @@ from __future__ import annotations
 import json
 import sqlite3
 
-from app.models import BranchOut, MessageOut
+from app.llm.base import LLMProvider
+from app.llm.embeddings import from_blob, is_stale_embedding
+from app.models import BranchOut, MemoryOut, MessageOut, ProposalOut
 from app.repo import commits as commits_repo
 from app.visibility import effective_memories, visible_commit_chain
 
@@ -48,6 +50,79 @@ def message_out(
         is_inherited=commit["branch_id"] != branch["id"],
         status=commit["status"] or "complete",
         created_at=commit["created_at"],
+    )
+
+
+def _value(item, key, default=None):
+    try:
+        return item[key]
+    except (KeyError, IndexError, TypeError):
+        return default
+
+
+def memory_out(
+    item,
+    *,
+    provider: LLMProvider,
+    origin_branch_name: str | None = None,
+    excluded: bool = False,
+) -> MemoryOut:
+    blob = _value(item, "embedding")
+    has_embedding = blob is not None
+    stale = has_embedding and is_stale_embedding(
+        _value(item, "embedding_model"),
+        _value(item, "embedding_dim"),
+        provider.embed_model,
+        provider.embed_dim,
+    )
+    if has_embedding and not stale:
+        try:
+            stale = from_blob(blob).size != provider.embed_dim
+        except (TypeError, ValueError):
+            stale = True
+    importance = _value(item, "importance", 0.5)
+    return MemoryOut(
+        id=_value(item, "id"),
+        content=_value(item, "content", ""),
+        kind=_value(item, "kind") or "fact",
+        importance=float(importance if importance is not None else 0.5),
+        pinned=bool(_value(item, "pinned", False)),
+        edited=bool(_value(item, "edited", False)),
+        inherited=bool(_value(item, "inherited", False)),
+        excluded=excluded,
+        origin_branch_id=_value(item, "origin_branch_id", ""),
+        origin_branch_name=(
+            origin_branch_name
+            or _value(item, "origin_branch_name")
+            or "unknown"
+        ),
+        source_commit_id=_value(item, "source_commit_id", ""),
+        supersedes_id=_value(item, "supersedes_id"),
+        derived_from_id=_value(item, "derived_from_id"),
+        has_embedding=has_embedding,
+        stale_embedding=stale or not has_embedding,
+        created_at=_value(item, "created_at", ""),
+    )
+
+
+def proposal_out(row) -> ProposalOut:
+    return ProposalOut(
+        id=row["id"],
+        branch_id=row["branch_id"],
+        commit_id=row["commit_id"],
+        content=row["content"],
+        kind=row["kind"] or "fact",
+        importance=float(
+            row["importance"] if row["importance"] is not None else 0.5
+        ),
+        status=row["status"],
+        reason=row["reason"] or "",
+        conflicts_with_memory_id=row["conflicts_with_memory_id"],
+        conflict_content=_value(row, "conflict_content"),
+        conflict_kind=_value(row, "conflict_kind"),
+        accepted_memory_id=row["accepted_memory_id"],
+        resolution=row["resolution"],
+        created_at=row["created_at"],
     )
 
 
