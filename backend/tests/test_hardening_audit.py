@@ -195,3 +195,60 @@ def test_concurrent_chat_lock_returns_409(hardening_client: TestClient):
         assert res.json().get("error", {}).get("code") == "generation_in_progress"
     finally:
         _ACTIVE_GENERATIONS.discard(branch_id)
+
+
+def test_upstream_delete_creates_child_tombstone(hardening_client: TestClient):
+    """BRN-001: Upstream memory deletion surfaces as tombstone in child branch with keep-local."""
+    space_res = hardening_client.post(
+        "/api/spaces",
+        json={"name": "Tombstone Space"},
+        headers={REQUEST_HEADER: "1"},
+    )
+    root_branch_id = hardening_client.get(f"/api/spaces/{space_res.json()['id']}/branches").json()[
+        0
+    ]["id"]
+
+    # 1. Create a memory in root
+    mem_res = hardening_client.post(
+        f"/api/branches/{root_branch_id}/memories",
+        json={"content": "Root durable fact to be deleted", "kind": "fact"},
+        headers={REQUEST_HEADER: "1"},
+    )
+    assert mem_res.status_code == 201
+    mem_id = mem_res.json()["id"]
+
+    # 2. Fork child branch from root
+    fork_res = hardening_client.post(
+        f"/api/branches/{root_branch_id}/fork",
+        json={"name": "Child Branch"},
+        headers={REQUEST_HEADER: "1"},
+    )
+    assert fork_res.status_code == 201
+    child_id = fork_res.json()["id"]
+
+    # 3. Soft-delete the memory in root
+    del_res = hardening_client.delete(
+        f"/api/branches/{root_branch_id}/memories/{mem_id}",
+        headers={REQUEST_HEADER: "1"},
+    )
+    assert del_res.status_code == 204
+
+    # 4. Check tombstones in child
+    tomb_res = hardening_client.get(f"/api/branches/{child_id}/tombstones")
+    assert tomb_res.status_code == 200
+    tombstones = tomb_res.json()
+    assert any(t["id"] == mem_id for t in tombstones)
+
+    # 5. Keep local copy on child
+    keep_res = hardening_client.post(
+        f"/api/branches/{child_id}/memories/{mem_id}/keep-local",
+        headers={REQUEST_HEADER: "1"},
+    )
+    assert keep_res.status_code == 201
+    local_mem = keep_res.json()
+    assert local_mem["derived_from_id"] == mem_id
+    assert local_mem["origin_branch_id"] == child_id
+
+    # 6. Tombstones in child now empty for this memory
+    tomb_res_after = hardening_client.get(f"/api/branches/{child_id}/tombstones")
+    assert not any(t["id"] == mem_id for t in tomb_res_after.json())

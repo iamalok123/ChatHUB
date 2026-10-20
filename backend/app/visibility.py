@@ -184,3 +184,53 @@ def excluded_memories(conn: sqlite3.Connection, branch: sqlite3.Row) -> list[dic
             item["excluded"] = True
             result.append(item)
     return sorted(result, key=lambda item: (item["created_at"], item["id"]))
+
+
+def tombstoned_memories(conn: sqlite3.Connection, branch: sqlite3.Row) -> list[dict[str, Any]]:
+    visible_commits = visible_commit_ids(conn, branch)
+    if not visible_commits:
+        return []
+
+    ids = list(visible_commits)
+    tombstones: list[dict[str, Any]] = []
+
+    kept_derived_ids = {
+        row["derived_from_id"]
+        for row in conn.execute(
+            """
+            SELECT derived_from_id FROM memories
+            WHERE origin_branch_id = ? AND derived_from_id IS NOT NULL AND deleted_at IS NULL
+            """,
+            (branch["id"],),
+        ).fetchall()
+    }
+
+    for offset in range(0, len(ids), QUERY_CHUNK):
+        chunk = ids[offset : offset + QUERY_CHUNK]
+        placeholders = ",".join("?" for _ in chunk)
+        rows = conn.execute(
+            f"""
+            SELECT * FROM memories
+            WHERE space_id = ?
+              AND deleted_at IS NOT NULL
+              AND origin_branch_id != ?
+              AND source_commit_id IN ({placeholders})
+            """,
+            [branch["space_id"], branch["id"], *chunk],
+        ).fetchall()
+        for row in rows:
+            if row["id"] not in kept_derived_ids:
+                item = {
+                    "id": row["id"],
+                    "content": row["content"],
+                    "kind": row["kind"],
+                    "importance": row["importance"],
+                    "origin_branch_id": row["origin_branch_id"],
+                    "status": "tombstoned",
+                    "reason": "Removed upstream",
+                    "deleted_at": row["deleted_at"],
+                    "created_at": row["created_at"],
+                }
+                tombstones.append(item)
+
+    return tombstones

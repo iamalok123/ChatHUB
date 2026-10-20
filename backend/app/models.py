@@ -84,6 +84,7 @@ class BranchOut(BaseModel):
     memory_mode: str
     color: str | None
     archived: bool
+    ephemeral: bool = False
     created_at: str
     is_root: bool
     message_count: int
@@ -100,6 +101,7 @@ class BranchUpdate(StrictModel):
     memory_mode: Literal["review", "auto", "off"] | None = None
     color: Annotated[str, StringConstraints(max_length=32)] | None = None
     archived: bool | None = None
+    ephemeral: bool | None = None
 
 
 class ChatRequest(StrictModel):
@@ -227,6 +229,7 @@ class ForkRequest(StrictModel):
     exclude_memory_ids: list[str] = Field(default_factory=list)
     pin_memory_ids: list[str] = Field(default_factory=list)
     unpin_memory_ids: list[str] = Field(default_factory=list)
+    ephemeral: bool = False
 
 
 class ForkPreviewOut(BaseModel):

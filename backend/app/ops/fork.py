@@ -120,6 +120,7 @@ def create_fork(
         memory_mode=(
             payload.memory_mode if payload.memory_mode is not None else source["memory_mode"]
         ),
+        ephemeral=payload.ephemeral,
     )
     if excluded or pinned or unpinned:
         now = utc_now()

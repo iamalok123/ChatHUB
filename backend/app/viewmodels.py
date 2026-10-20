@@ -33,6 +33,7 @@ def branch_out(conn: sqlite3.Connection, branch: sqlite3.Row) -> BranchOut:
         memory_mode=branch["memory_mode"],
         color=branch["color"],
         archived=bool(branch["archived"]),
+        ephemeral=bool(branch["ephemeral"]) if "ephemeral" in branch else False,
         created_at=branch["created_at"],
         is_root=branch["parent_branch_id"] is None,
         message_count=commits_repo.count_messages(conn, visible_ids),

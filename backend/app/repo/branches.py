@@ -57,6 +57,7 @@ def create(
     memory_mode: str = "review",
     color: str | None = None,
     archived: bool = False,
+    ephemeral: bool = False,
 ) -> tuple[sqlite3.Row, sqlite3.Row]:
     branch_id = new_id()
     anchor_id = new_id()
@@ -73,8 +74,8 @@ def create(
             INSERT INTO branches(
                 id, space_id, name, parent_branch_id, fork_commit_id, head_commit_id,
                 system_prompt, persona, model, thinking_level, top_k, memory_mode,
-                color, archived, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                color, archived, ephemeral, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 branch_id,
@@ -91,6 +92,7 @@ def create(
                 memory_mode,
                 color,
                 int(archived),
+                1 if ephemeral else 0,
                 now,
             ),
         )
@@ -123,6 +125,7 @@ def archive(conn: sqlite3.Connection, branch_id: str) -> None:
 
 def delete(conn: sqlite3.Connection, branch_id: str) -> None:
     with conn:
+        conn.execute("DELETE FROM memories WHERE origin_branch_id = ?", (branch_id,))
         conn.execute("DELETE FROM branches WHERE id = ?", (branch_id,))
 
 

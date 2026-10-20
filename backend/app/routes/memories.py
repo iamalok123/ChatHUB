@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import sqlite3
+from typing import Any
 
 from fastapi import APIRouter, Request, Response
 
@@ -33,6 +34,7 @@ from app.viewmodels import memory_out, proposal_out
 from app.visibility import (
     effective_memories,
     excluded_memories,
+    tombstoned_memories,
     visible_commit_ids,
 )
 
@@ -492,3 +494,50 @@ def reject_proposal(
     if updated is None:
         raise ApiError(409, "proposal_resolved", "This proposal is already resolved")
     return proposal_out(updated)
+
+
+@router.get("/branches/{branch_id}/tombstones")
+def list_tombstones(
+    branch_id: str,
+    user: CurrentUser,
+    conn: DbConn,
+) -> list[dict[str, Any]]:
+    branch = branches_repo.require_owned(conn, branch_id, user.id)
+    return tombstoned_memories(conn, branch)
+
+
+@router.post("/branches/{branch_id}/memories/{memory_id}/keep-local", status_code=201)
+def keep_local(
+    branch_id: str,
+    memory_id: str,
+    user: CurrentUser,
+    conn: DbConn,
+) -> dict[str, Any]:
+    branch = _active_branch(conn, branch_id, user.id)
+    tombstones = tombstoned_memories(conn, branch)
+    tombstone = next((t for t in tombstones if t["id"] == memory_id), None)
+    if tombstone is None:
+        raise ApiError(404, "tombstone_not_found", "No upstream tombstone found for this memory")
+
+    mem_row = conn.execute("SELECT * FROM memories WHERE id = ?", (memory_id,)).fetchone()
+    embedding = mem_row["embedding"] if mem_row else None
+    embed_model = mem_row["embedding_model"] if mem_row else None
+    embed_dim = mem_row["embedding_dim"] if mem_row else None
+
+    row = memories_repo.create(
+        conn,
+        space_id=branch["space_id"],
+        origin_branch_id=branch["id"],
+        source_commit_id=branch["head_commit_id"],
+        content=tombstone["content"],
+        kind=tombstone.get("kind", "fact"),
+        importance=float(tombstone.get("importance", 0.5)),
+        embedding=embedding,
+        embedding_model=embed_model,
+        embedding_dim=embed_dim,
+        derived_from_id=memory_id,
+        commit=True,
+    )
+    result = dict(row)
+    result.pop("embedding", None)
+    return result
