@@ -53,6 +53,7 @@ def create_with_main(
     name: str,
     description: str,
     profile: dict[str, Any],
+    memory_mode: str = "auto",
 ) -> tuple[sqlite3.Row, sqlite3.Row]:
     space_id = new_id()
     branch_id = new_id()
@@ -80,9 +81,9 @@ def create_with_main(
                 id, space_id, name, parent_branch_id, fork_commit_id, head_commit_id,
                 system_prompt, persona, model, thinking_level, top_k, memory_mode,
                 color, archived, created_at
-            ) VALUES (?, ?, 'main', NULL, NULL, ?, '', '', NULL, 'medium', 6, 'review', ?, 0, ?)
+            ) VALUES (?, ?, 'main', NULL, NULL, ?, '', '', NULL, 'medium', 6, ?, ?, 0, ?)
             """,
-            (branch_id, space_id, anchor_id, ROOT_BRANCH_COLOR, now),
+            (branch_id, space_id, anchor_id, memory_mode, ROOT_BRANCH_COLOR, now),
         )
         conn.execute(
             """

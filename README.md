@@ -2,17 +2,15 @@
 
 ChatHUB treats conversations like Git repositories: a **Space** is the repository, a **Branch** is an isolated conversational timeline, and **Memories** are versioned, inherited, selectable, and mergeable.
 
-The authoritative build contract lives in [AGENTS.md](AGENTS.md). Architecture decisions are recorded in [docs/DECISIONS.md](docs/DECISIONS.md).
-
 ---
 
-## Tech Stack & Production Architecture
+## 1. Tech Stack & Production Architecture
 
 | Layer | Technology | Details |
 | :--- | :--- | :--- |
 | **Backend** | Python 3.12, FastAPI, Uvicorn | Native Server-Sent Events (SSE) streaming, async endpoints, Render & Railway ready |
-| **Database** | PostgreSQL (NeonDB) / SQLite | Dual-mode: Production serverless PostgreSQL with NeonDB (`DATABASE_URL`), zero-setup local SQLite fallback |
-| **Vector Engine** | Qdrant / Local NumPy Cosine | Dual-mode: Dedicated Qdrant vector database (`QdrantClient`) with two-phase ancestor isolation, zero-setup local fallback |
+| **Database** | PostgreSQL (Neon) / SQLite | Serverless PostgreSQL with Neon (`DATABASE_URL`), connection pooling, zero-setup local SQLite fallback |
+| **Vector Engine** | Qdrant / Local NumPy Cosine | Dedicated Qdrant vector database (`QdrantClient`) with two-phase ancestor isolation, zero-setup local fallback |
 | **AI / Embeddings** | Google Gemini (`google-genai` SDK) | `gemini-3.8-flash` with thinking levels, `gemini-embedding-001` (768-dim) |
 | **Local Fallback** | Deterministic Mock Provider | Streamed canned replies, hash embeddings, synthetic context summaries |
 | **Auth** | Argon2id (`argon2-cffi`) | HttpOnly, SameSite=Lax session cookies, cryptographic token hashing |
@@ -23,7 +21,7 @@ The authoritative build contract lives in [AGENTS.md](AGENTS.md). Architecture d
 
 ---
 
-## Quick Start & Developer Commands
+## 2. Quick Start & Developer Commands
 
 ChatHUB frontend and backend are completely decoupled and run in separate terminals:
 
@@ -33,7 +31,7 @@ ChatHUB frontend and backend are completely decoupled and run in separate termin
 ```powershell
 cd backend
 py -3.12 -m venv .venv                         # Creates isolated Python 3.12 virtual environment
-.venv\Scripts\pip install -r requirements.txt  # Installs FastAPI, Uvicorn, Gemini SDK, etc.
+.venv\Scripts\pip install -r requirements.txt  # Installs FastAPI, Uvicorn, Gemini SDK, Psycopg, etc.
 ```
 
 **Single Command to Start Backend (Daily Development):**
@@ -44,7 +42,7 @@ cd backend
 *What this command does:*
 - Starts the FastAPI application with auto-reload enabled for developer hot-reloading.
 - Reads configuration and secrets strictly from `backend/.env`.
-- Automatically initializes the database and applies all schema migrations (`schema_pg.sql` or SQLite).
+- Automatically initializes the database and applies all schema migrations against Neon PostgreSQL (or SQLite if offline).
 - Binds to `http://127.0.0.1:8000` (Health check endpoint: `http://127.0.0.1:8000/api/health`).
 
 ### 2. Run Frontend (Terminal 2)
@@ -68,7 +66,7 @@ Frontend UI will be live at `http://127.0.0.1:5173`.
   cd frontend
   npm test
   ```
-- **Backend Pytest Suites (96 tests):**
+- **Backend Pytest Suites (78+ tests):**
   ```powershell
   cd backend
   .venv\Scripts\pytest tests
@@ -86,29 +84,24 @@ npm run build
 
 ---
 
-## Clean, Decoupled Project Layout
+## 3. Clean, Decoupled Project Layout
 
 ```
 ChatHUB/
 ├── AGENTS.md                  # Comprehensive engineering contract
-├── README.md                  # Complete documentation and user guide
-├── .gitignore                 # Strict ignores for credentials and build artifacts
-├── docs/
-│   ├── AUDIT.md               # Hardening audit register (10/10 fixed & verified)
-│   ├── DECISIONS.md           # Architecture Decision Records (ADRs)
-│   ├── HARDENING.md           # Security, memory & governance playbook
-│   └── PRODUCTION_TEST_PLAN.md# Production testing & deployment matrix
+├── README.md                  # Unified documentation, architecture, audit & run guide
+├── .gitignore                 # Strict ignores for credentials, databases, docs, and build artifacts
 ├── backend/                   # Standalone Python 3.12 FastAPI Service (Render / Railway)
 │   ├── .env                   # Active backend configuration & secrets (git-ignored)
 │   ├── .env.example           # Standalone backend environment template
-│   ├── requirements.txt       # Python dependencies
+│   ├── requirements.txt       # Python dependencies (FastAPI, psycopg, qdrant-client, google-genai)
 │   ├── pyproject.toml         # Packaging & ruff configuration
 │   ├── railway.json           # Railway platform blueprint (builder & startCommand)
 │   ├── render.yaml            # Render platform blueprint
-│   ├── app/                   # Clean production source code (zero test clutter)
+│   ├── app/                   # Clean production source code
 │   │   ├── main.py            # App factory, middleware, lifespans
 │   │   ├── config.py          # Typed settings loaded from backend/.env
-│   │   ├── db.py / schema.sql # Dual-mode NeonDB PostgreSQL / SQLite fallback
+│   │   ├── db.py / schema.sql # Dual-mode Neon PostgreSQL / SQLite fallback
 │   │   ├── visibility.py      # Core R1 ancestor commit & memory isolation
 │   │   ├── auth/              # Passwords, session tokens, dependencies
 │   │   ├── repo/              # Users, spaces, branches, commits, memories
@@ -116,7 +109,7 @@ ChatHUB/
 │   │   ├── engine/            # Context composer, retrieval, extraction, chat
 │   │   ├── ops/               # Fork, merge, sync, diff, checkpoints, export
 │   │   └── routes/            # Thin REST and SSE route handlers
-│   └── tests/                 # All 96 backend pytest suites (isolated)
+│   └── tests/                 # All backend pytest test suites
 └── frontend/                  # Standalone Vite + React 19 + TypeScript SPA (Vercel)
     ├── .env                   # Active frontend configuration (git-ignored)
     ├── .env.example           # Standalone frontend environment template
@@ -127,80 +120,100 @@ ChatHUB/
         ├── App.tsx            # Root component with auth & routing
         ├── api/               # Typed fetch client, SSE consumer, interfaces
         ├── auth/              # Auth store & session listener
-        ├── components/        # Pure production UI components (no test clutter)
+        ├── components/        # Production UI components
         │   ├── chat/          # Message items, markdown, streaming cursor
         │   ├── graph/         # React Flow interactive branch DAG
         │   ├── inspector/     # Memory manager, personalization, Why trace panel
         │   ├── layout/        # AppShell, sidebar, branch switcher, command palette
         │   └── operations/    # Fork dialog, upward merge dialog, sync dialog, diff
         ├── store/             # Zustand stores (workspace, ui, operations, trace)
-        └── test/              # All 14 consolidated frontend Vitest suites
+        └── test/              # All consolidated frontend Vitest suites
 ```
 
 ---
 
-## Core Product Concepts & Features
+## 4. Core Product Concepts & Git-for-Chat Mechanics
 
-### 1. User & Space Isolation
-* **Strict Ownership (`spaces.owner_id`)**: Every space belongs to exactly one authenticated user.
-* **Invisible Objects Return 404**: Foreign spaces, branches, or commits never return 403; unauthorized entities appear non-existent.
-* **Secure Cookies**: Opaque tokens stored with `HttpOnly`, `SameSite=Lax`, and Argon2id hashing.
+| Git Concept | ChatHUB Concept | Behavioral Guarantee |
+| :--- | :--- | :--- |
+| **Repository** | **Space** | Isolated project or persona with its own memory universe and owner (`spaces.owner_id`). |
+| **Commit** | **Message Node** | One user or assistant turn linked to its parent commit. |
+| **Branch** | **Branch** | Independent timeline with customizable persona, system prompt, thinking level, and memory settings. |
+| **Fork** | **Fork from Message** | Fork from any message, choosing which memories carry over via an interactive checklist. |
+| **Merge** | **Merge Up** | Send selected memories and an AI summary up to an ancestor branch. Messages are never copied. |
+| **Pull** | **Sync Upstream** | Pull newly created parent memories into a child branch. |
+| **Diff** | **Compare Divergence** | Compare memory sets and message history between any branch and its ancestor. |
+| **Tag** | **Checkpoint** | Named snapshot of a specific point in a branch. |
+| **Blame** | **Provenance** | Every memory tracks its source commit and origin branch. |
 
-### 2. Git-like Branching & Visibility (The R1 Rule)
-* **Upstream-Only Visibility**: A branch can see only its own commits/memories plus ancestors up to the exact fork point. Siblings, cousins, children, or subsequent upstream commits are completely invisible.
-* **Anchor Commits**: Every branch begins with a hidden anchor commit, ensuring non-null head commit references and real commit IDs for memories.
-* **Parent Commit Walk**: The `visible_commit_ids` function computes visibility by traversing `commits.parent_id` upward to the root.
+### The Five Non-Negotiable Rules
 
-### 3. Version-Controlled Memory Universe
-* **Provenance**: Every memory records its `origin_branch_id` and `source_commit_id`.
-* **Branch-Local Overrides**: Inherited memories can be **excluded**, **pinned**, or have their content **overridden** on a branch without mutating upstream data.
-* **Supersedes Pointers**: Memory updates set `supersedes_id` so outdated memories are cleanly masked within visible lineage.
-* **Review / Auto / Off Modes**:
-  * `review`: AI-extracted memories appear as pending proposals with conflict detection.
-  * `auto`: Non-conflicting memories are stored automatically; conflicts await review.
-  * `off`: Memory extraction is skipped.
-
-### 4. Transparent Retrieval & Reasoning (The "Why" View)
-* **Hybrid Scoring**:
-  $$\text{Score} = 0.60 \times \text{CosineSimilarity} + 0.25 \times \text{Importance} + 0.15 \times \text{RecencyDecay}$$
-* **Inspectable Trace**: Every assistant turn records a full trace JSON showing:
-  * Selected memories with score breakdowns.
-  * Considered-but-skipped memories (budget limits, low score, stale embeddings).
-  * Excluded memories and branch overrides.
-  * Exact context token composition and Gemini usage metadata.
-  * Real model thinking or clearly labelled synthetic context summaries.
-
-### 5. Git Operations
-* **Fork from Anywhere**: Fork from any visible message, checkpoint, or branch head. Includes a 3-step memory checklist (keep, exclude, pin, unpin).
-* **Upward-Only Merge**: Merge selected memories and an AI-generated summary into an ancestor branch. Messages are never copied.
-* **Sync Upstream**: Pull new memories created on a parent branch after the fork point.
-* **Compare Divergence**: Diff memory sets and message history between any branch and its ancestors.
-* **Checkpoints**: Snapshot named points in a branch to preserve baselines or reopen as new branches.
-* **Interactive Graph**: Interactive visual DAG displaying branches, fork points, merges, syncs, and checkpoints.
-* **Command Palette**: Press `Ctrl+K` to switch branches, jump spaces, open diffs, or toggle settings.
+1. **R0 User Isolation**: Every space belongs to exactly one authenticated user. Queries scope by `spaces.owner_id`. Foreign objects return `404 Not Found`, never `403`.
+2. **R1 Upstream-Only Visibility**: A branch can see only its own messages and memories plus ancestors up to the fork point. Siblings, cousins, children, or subsequent upstream commits are completely invisible. Enforced in `visible_commit_ids`.
+3. **R2 Explicit Provenance**: Every memory has an origin branch, source commit, and status.
+4. **R3 Fork Means Choose**: Forking opens a checklist of inherited memories (keep, exclude, pin, unpin).
+5. **R4 Merge Goes Only Upward**: Merging is restricted strictly to branch-tree ancestors.
 
 ---
 
-## Verification & Test Status
+## 5. Security & Hardening Audit Register
 
-All suites pass with 100% success rate:
+All 10 critical security, memory governance, and architectural audit findings have been resolved and verified with dedicated automated tests:
 
-* **Backend Tests (`pytest`):** 96 passed, 2 skipped (including 6 automated hardening & chaos evals).
-* **Frontend Tests (`vitest`):** 14 test suites, 38 tests passed.
-* **TypeScript Compilation (`tsc`):** Zero errors.
-* **Vite Production Build:** Success.
-* **Linters (`oxlint`, `ruff`):** Zero warnings, zero errors.
-* **Hardening Audit (`docs/AUDIT.md`):** 10/10 findings resolved and verified.
+| ID | Severity | Vulnerability / Gap | Fix Implemented | Automated Test | Status |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **SEC-001** | High | **Host header validation missing:** DNS rebinding vulnerability on local & production ports. | Added `HostHeaderMiddleware` enforcing allowlist (`127.0.0.1`, `localhost`, production domains). | `test_host_header_rejected_when_not_allowed` | `fixed` |
+| **SEC-002** | High | **Permissive CSRF & Origin checks:** Cross-site browser requests could trigger mutations. | Enforced strict Origin validation and `X-ChatHUB-Request: 1` header on mutating methods. | `test_mutating_request_origin_validation` | `fixed` |
+| **SEC-003** | Critical | **Memory poisoning & prompt injection:** Assistant outputs or malicious prompts could inject standing instructions. | Strict candidate filtering: quarantine assistant/tool content; reject imperative instructions from non-user turns. | `test_memory_poisoning_instruction_rejected` | `fixed` |
+| **SEC-004** | High | **Sensitive secrets stored as memories:** API keys (`AIza...`, `sk-...`, `ghp_...`) and high-entropy secrets saved silently. | Integrated Shannon entropy calculation ($\ge 4.2$) and pattern scanner rejecting storage with `400 Bad Request`. | `test_secrets_detection_blocks_api_keys` | `fixed` |
+| **ISO-001** | Critical | **Cross-branch canary leakage:** Secrets or canary memories in sibling branches leaking through search or un-scoped queries. | All search, graph, and memory queries filter strictly through `visible_commit_ids`. Zero canary leakage. | `test_canary_secret_never_leaks_to_sibling` | `fixed` |
+| **MEM-001** | High | **Incomplete deletion ("Forget" gap):** Soft-deletion leaving residual vectors in Qdrant and text in `trace_json`. | Implemented atomic `forget` operation that deletes memory row, version history, Qdrant vector point, and scrubs trace JSON. | `test_forget_memory_scrubs_all_traces_and_vectors` | `fixed` |
+| **CON-001** | High | **Concurrent chat generation race:** Simultaneous messages on the same branch corrupting head commit pointer. | Implemented per-branch async locks returning `409 Conflict` during active generation. | `test_concurrent_chat_lock_returns_409` | `fixed` |
+| **BRN-001** | Medium | **Upstream deletion leaves child unaware:** Upstream deletion created invisible memory gaps for children. | Added `status='tombstoned'` state; UI shows "Removed upstream" with an option to keep local copy. | `test_upstream_delete_creates_child_tombstone` | `fixed` |
+| **JOB-001** | Medium | **Memory rot & staleness:** Stale, expired, or contradictory memories accumulating without cleanup. | Implemented background consolidation engine with staleness sweep, contradiction sweep, and review inbox. | `test_staleness_sweep_flags_expired_memories` | `fixed` |
+| **SCH-001** | High | **Unversioned static database schema:** Inability to run incremental schema updates safely in production. | Implemented `schema_migrations` runner with numbered migrations (`0001_initial_pg.sql`, `0002_hardening_pg.sql`). | `test_schema_migration_runner` | `fixed` |
 
 ---
 
-## Production Deployment Guide
+## 6. Automated Evaluations & Chaos Benchmarks
 
-ChatHUB is fully engineered for split-architecture production deployment:
-* **Frontend:** Deployed to **Vercel** as a high-performance static SPA with automated API rewrites.
-* **Backend:** Deployed to **Render** or **Railway** as a containerized FastAPI service.
-* **Database:** Serverless **PostgreSQL** hosted on **NeonDB** (zero-sleep architecture).
-* **Vector Engine:** Cloud-managed **Qdrant** (or local vector fallback).
+All benchmark evaluations are codified in `backend/tests/test_evals_and_chaos.py`:
+
+| Benchmark | Objective | Methodology & Verification | Result |
+| :--- | :--- | :--- | :--- |
+| **EVAL-1: Cross-Branch Isolation** | 0% canary leakage across sibling branches | Injected unique canary tokens (`CANARY-ALPHA-9981-SECRET`) across sibling branches; verified zero leakage into context, memories, or traces. | `PASSED` (0% leakage) |
+| **EVAL-2: Prompt Injection Defense** | Jailbreak & instruction override rejection | Evaluated against direct system override payloads, developer mode bypasses, and directive disregard strings. | `PASSED` (100% blocked) |
+| **EVAL-3: Secret & Entropy Scanner** | Block API keys and high-entropy strings | Tested against live patterns (`AIza...`, `sk-ant-...`, `ghp_...`, JWTs) and random high-entropy strings ($\ge 4.2$ bits). | `PASSED` (400 Bad Request) |
+| **EVAL-4: Hybrid MMR Precision** | Penalize redundant near-duplicate context | Dense vectors on the same topic penalized via MMR ($\lambda=0.7$), promoting topic diversity in working memory. | `PASSED` (Diverse context selected) |
+| **EVAL-5: Concurrency Chaos** | Branch generation lock resilience | Simulated simultaneous generation requests on the same branch head. Second call receives 409 Conflict; lock reliably releases upon completion. | `PASSED` (409 Conflict + lock release) |
+| **EVAL-6: Atomic Forget Scrub** | Complete scrubbing for privacy compliance | Memory row, versions, Qdrant vectors, FTS indexes, and commit trace JSON references completely removed. | `PASSED` (100% scrubbed) |
+
+---
+
+## 7. Architecture Decision Records (ADRs)
+
+- **ADR-001: Local-First with Google Gemini 3.8 Flash**
+  - *Context:* Need reliable, current LLM with streaming and thinking support.
+  - *Decision:* Standardized on official `google-genai==2.31.0` SDK with `gemini-3.8-flash` and `gemini-embedding-001` (768-dim). Provided deterministic mock fallback for offline operation.
+- **ADR-002: Neon PostgreSQL as System of Record**
+  - *Context:* Serverless, zero-sleep relational storage with connection pooling for production.
+  - *Decision:* Primary database is Neon PostgreSQL with `psycopg` connection pooling. Local SQLite is preserved as a zero-setup fallback.
+- **ADR-003: Dual-Mode Vector Retrieval (Qdrant + NumPy)**
+  - *Context:* Scalable vector search with two-phase ancestor isolation.
+  - *Decision:* Qdrant Cloud client stores vector payloads; local NumPy cosine similarity acts as zero-dependency fallback. Postgres remains the single authority on visibility.
+- **ADR-004: Decoupled Independent Deployments**
+  - *Context:* Frontend and backend require separate deploy targets (Vercel for frontend SPA, Render/Railway for backend API).
+  - *Decision:* Completely decoupled root files. Frontend uses `frontend/.env` with Vite proxy; backend uses `backend/.env` with CORS/Host validation.
+- **ADR-005: Per-Branch Async Generation Locks**
+  - *Context:* Preventing race conditions on branch head pointers.
+  - *Decision:* Acquire in-memory asyncio locks keyed by `branch_id`; simultaneous requests return `409 Conflict`.
+- **ADR-006: Outbox Pattern & Background Consolidation**
+  - *Context:* Reliable vector sync and asynchronous memory maintenance without slowing user chat responses.
+  - *Decision:* Implemented `outbox_events` and background `jobs` runner for vector syncing, staleness sweeps, and contradiction audits.
+
+---
+
+## 8. Production Deployment Guide
 
 ```
    ┌────────────────────────────────────────────────────────┐
@@ -217,68 +230,47 @@ ChatHUB is fully engineered for split-architecture production deployment:
        │                                                │
        ▼ Connection Pool                                ▼ REST / gRPC
  ┌──────────────┐                                ┌──────────────┐
- │ NeonDB (PG)  │                                │ Qdrant Cloud │
+ │ Neon (PG)    │                                │ Qdrant Cloud │
  │ Relational DB│                                │ Vector DB    │
  └──────────────┘                                └──────────────┘
 ```
 
-### 1. Database Setup (NeonDB PostgreSQL)
-1. Sign up at [neon.tech](https://neon.tech) and create a free PostgreSQL project.
-2. Under "Connection details", copy the pooled connection string, e.g.:
+### 1. Database Setup (Neon PostgreSQL)
+1. Sign up at [neon.tech](https://neon.tech) and create a project.
+2. In `backend/.env`, set `DATABASE_URL` to your pooled connection string:
+   ```env
+   DATABASE_URL=postgresql://user:password@ep-sample-pooler.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require
    ```
-   postgresql://user:password@ep-sample-pooler.us-east-2.aws.neon.tech/neondb?sslmode=require
-   ```
-3. Set `DATABASE_URL` in your backend environment variables. The backend automatically boots with `schema_pg.sql` and creates all tables, foreign keys, and indexes.
+3. The backend automatically boots with `schema_pg.sql` and applies all migrations on startup.
 
-### 2. Vector DB Setup (Qdrant)
-1. Sign up at [qdrant.tech](https://cloud.qdrant.io) and create a free 1GB cluster.
-2. Note your Cluster URL (e.g., `https://xxxx.cloud.qdrant.io:6333`) and generate an API key.
-3. Set `QDRANT_URL` and `QDRANT_API_KEY` in your backend environment variables.
-*(Note: If omitted, ChatHUB falls back seamlessly to internal NumPy cosine similarity.)*
+### 2. Deploy Backend (Render or Railway)
+- **Render:**
+  - Create a Web Service connected to your repo.
+  - Root Directory: `backend` (or use `backend/render.yaml`).
+  - Build Command: `pip install -r requirements.txt`
+  - Start Command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+  - Add Environment Variables (`APP_HOST=0.0.0.0`, `DATABASE_URL`, `GEMINI_API_KEY`, `ALLOWED_ORIGINS=https://your-app.vercel.app`, `COOKIE_SECURE=true`).
+- **Railway:**
+  - Deploy from repo. Railway detects `backend/railway.json`.
+  - Add the same environment variables.
 
-### 3. Deploy Backend to Render or Railway
-
-#### Option A: Render
-1. Connect your Git repository to [render.com](https://render.com).
-2. Select **Web Service**, set Root Directory to `backend` (or use the included `backend/render.yaml` Blueprint).
-3. Set Build Command: `pip install -r requirements.txt`
-4. Set Start Command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
-5. Configure Environment Variables in Render Dashboard:
-   - `APP_HOST`: `0.0.0.0`
-   - `DATABASE_URL`: Your NeonDB PostgreSQL connection string
-   - `QDRANT_URL`: Your Qdrant cluster endpoint
-   - `QDRANT_API_KEY`: Your Qdrant API key
-   - `GEMINI_API_KEY`: Your Google Gemini API key
-   - `ALLOWED_ORIGINS`: Your Vercel frontend URL (e.g., `https://chathub.vercel.app`)
-   - `COOKIE_SECURE`: `true`
-   - `ALLOW_SIGNUP`: `true`
-
-#### Option B: Railway
-1. Create a new project on [railway.app](https://railway.app) from your GitHub repo.
-2. Set Root Directory to `/backend` (Railway automatically detects `backend/railway.json`).
-3. Add the same Environment Variables listed above.
-
-### 4. Deploy Frontend to Vercel
-1. Import your Git repository into [vercel.com](https://vercel.com).
-2. Set **Root Directory** to `frontend`.
-3. Framework Preset: **Vite**.
-4. Build Command: `npm run build`
-5. Output Directory: `dist`
-6. Add Environment Variable:
-   - `VITE_API_URL`: Your deployed backend URL (e.g., `https://chathub-backend.onrender.com`)
-7. Click **Deploy**. The included `frontend/vercel.json` automatically proxies `/api/*` to `VITE_API_URL`, ensuring authentication cookies and SSE streams pass without third-party cookie restrictions.
+### 3. Deploy Frontend (Vercel)
+- Import repo on [vercel.com](https://vercel.com).
+- Root Directory: `frontend`
+- Framework Preset: `Vite`
+- Build Command: `npm run build`
+- Output Directory: `dist`
+- Set `VITE_API_URL` to your backend URL (e.g. `https://chathub-backend.onrender.com`).
+- The included `frontend/vercel.json` automatically routes `/api/*` to `VITE_API_URL`.
 
 ---
 
-## Renaming the Base Directory to "ChatHUB" on Windows
+## 9. Renaming the Base Directory on Windows
 
-Because Windows locks active working directories when command prompts or IDEs have handles open, follow these quick steps:
-
-1. Close any running dev servers (`Ctrl+C`).
-2. Close the current terminal or switch to the parent directory:
-   ```powershell
-   cd ..
-   Rename-Item -Path "New folder" -NewName "ChatHUB"
-   cd ChatHUB
-   ```
-3. Open the newly renamed `ChatHUB` directory in your editor or terminal. All configurations, Git history, and dependencies remain completely intact.
+To rename the folder from `New folder` to `ChatHUB` on Windows without file locking conflicts:
+```powershell
+cd ..
+Rename-Item -Path "New folder" -NewName "ChatHUB"
+cd ChatHUB
+```
+All configurations, Git history, and dependencies remain completely intact.

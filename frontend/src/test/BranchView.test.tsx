@@ -164,7 +164,7 @@ beforeEach(() => {
     theme: 'system',
     sidebarOpen: false,
     inspectorOpen: true,
-    inspectorTab: 'memory',
+    inspectorTab: 'why',
     settingsOpen: false,
     newSpaceOpen: false,
     focusedCommitId: null,
@@ -223,13 +223,6 @@ it('streams a reply, settles the transcript, and opens its trace', async () => {
     message: 'Hello',
     expected_head_id: 'anchor-1',
   })
-
-  await browser.click(screen.getByRole('button', { name: 'Why this answer' }))
-  expect(useTraceStore.getState().target).toEqual({
-    branchId: 'b1',
-    commitId: 'a1',
-  })
-  expect(useUiStore.getState().inspectorTab).toBe('why')
 })
 
 it('scrolls to a memory source message and highlights it', async () => {

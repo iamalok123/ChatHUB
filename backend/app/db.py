@@ -10,22 +10,34 @@ SCHEMA_PATH = Path(__file__).with_name("schema.sql")
 PG_SCHEMA_PATH = Path(__file__).with_name("schema_pg.sql")
 
 
+class PostgresRow(dict):
+    """Row object that supports both dict key access and integer indexing (row[0]),
+    providing 100% compatibility with sqlite3.Row."""
+
+    def __getitem__(self, key: Any) -> Any:
+        if isinstance(key, int):
+            return tuple(self.values())[key]
+        return super().__getitem__(key)
+
+
 class PostgresCursorWrapper:
     def __init__(self, cur: Any) -> None:
         self._cur = cur
 
-    def fetchone(self) -> dict[str, Any] | None:
-        return self._cur.fetchone()
+    def fetchone(self) -> PostgresRow | None:
+        res = self._cur.fetchone()
+        return PostgresRow(res) if res is not None else None
 
-    def fetchall(self) -> list[dict[str, Any]]:
-        return self._cur.fetchall()
+    def fetchall(self) -> list[PostgresRow]:
+        return [PostgresRow(r) for r in self._cur.fetchall()]
 
     @property
     def rowcount(self) -> int:
         return self._cur.rowcount
 
     def __iter__(self) -> Any:
-        return iter(self._cur)
+        for r in self._cur:
+            yield PostgresRow(r)
 
 
 class PostgresConnectionWrapper:

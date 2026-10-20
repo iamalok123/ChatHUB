@@ -1,10 +1,7 @@
 import {
   ChevronRight,
-  Command,
   Menu,
   PanelLeft,
-  PanelRight,
-  Settings2,
 } from 'lucide-react'
 
 import { branchLineage } from '../../lib/branchTree'
@@ -25,19 +22,22 @@ export function WorkspaceHeader({ isMobile }: { isMobile: boolean }) {
   const setSidebarOpen = useUiStore((state) => state.setSidebarOpen)
   const sidebarCollapsed = useUiStore((state) => state.sidebarCollapsed)
   const setSidebarCollapsed = useUiStore((state) => state.setSidebarCollapsed)
-  const setPaletteOpen = useUiStore((state) => state.setPaletteOpen)
-  const inspectorOpen = useUiStore((state) => state.inspectorOpen)
-  const setInspectorOpen = useUiStore((state) => state.setInspectorOpen)
-  const setSettingsOpen = useUiStore((state) => state.setSettingsOpen)
 
   const chain = branch ? branchLineage(branches, branch.id) : []
   const ancestors = chain.slice(0, -1)
 
   return (
     <header className="flex h-14.5 shrink-0 items-center gap-2 border-b border-border bg-bg/90 px-3 backdrop-blur sm:px-4">
-      {isMobile && (
+      {isMobile ? (
         <IconButton label="Open sidebar" onClick={() => setSidebarOpen(true)}>
           <Menu size={18} aria-hidden />
+        </IconButton>
+      ) : (
+        <IconButton
+          label={sidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'}
+          onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+        >
+          <PanelLeft size={17} aria-hidden />
         </IconButton>
       )}
 
@@ -95,39 +95,6 @@ export function WorkspaceHeader({ isMobile }: { isMobile: boolean }) {
           <span className="text-sm font-medium tracking-tight text-ink">
             {space?.name ?? 'ChatHUB'}
           </span>
-        )}
-      </div>
-
-      <div className="flex shrink-0 items-center gap-0.5">
-        {!isMobile && (
-          <IconButton
-            label={sidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'}
-            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-          >
-            <PanelLeft size={17} aria-hidden />
-          </IconButton>
-        )}
-        <IconButton
-          label="Open command palette"
-          onClick={() => setPaletteOpen(true)}
-        >
-          <Command size={17} aria-hidden />
-        </IconButton>
-        <IconButton
-          label="Open settings"
-          onClick={() => setSettingsOpen(true)}
-          className="hidden sm:grid"
-        >
-          <Settings2 size={17} aria-hidden />
-        </IconButton>
-        {branch && (
-          <IconButton
-            label={inspectorOpen ? 'Hide inspector' : 'Show inspector'}
-            active={inspectorOpen}
-            onClick={() => setInspectorOpen(!inspectorOpen)}
-          >
-            <PanelRight size={17} aria-hidden />
-          </IconButton>
         )}
       </div>
     </header>

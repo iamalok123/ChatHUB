@@ -12,8 +12,6 @@ import type {
   Message,
   TraceStep,
 } from '../../api/types'
-import { plural } from '../../lib/format'
-import { useUiStore } from '../../store/ui'
 import { useWorkspaceStore } from '../../store/workspace'
 import type { LiveReply } from './types'
 
@@ -256,20 +254,6 @@ export function useChatStream(branchId: string, branchName: string, headId: stri
                     }
                   : current,
               )
-              if (data.proposals.length > 0) {
-                useUiStore.getState().pushToast(
-                  'info',
-                  `${plural(data.proposals.length, 'memory proposal')} ready`,
-                  'Open Memory in the inspector to review and accept them.',
-                )
-              }
-              if (data.auto_saved.length > 0) {
-                useUiStore.getState().pushToast(
-                  'success',
-                  `${plural(data.auto_saved.length, 'memory', 'memories')} saved`,
-                  'Saved automatically by branch memory mode.',
-                )
-              }
               return
             }
             if (event.event === 'done') {

@@ -195,9 +195,13 @@ def count_messages(conn: sqlite3.Connection, commit_ids: list[str]) -> int:
     placeholders = ",".join("?" for _ in commit_ids)
     row: Any = conn.execute(
         f"""
-        SELECT COUNT(*) FROM commits
+        SELECT COUNT(*) as cnt FROM commits
         WHERE id IN ({placeholders}) AND role IN ('user', 'assistant')
         """,
         commit_ids,
     ).fetchone()
+    if not row:
+        return 0
+    if isinstance(row, dict) and "cnt" in row:
+        return int(row["cnt"])
     return int(row[0])

@@ -1,16 +1,12 @@
 import {
-  Brain,
   GitBranch,
   GitCompare,
   GitFork,
   GitMerge,
-  Network,
   Plus,
   RefreshCw,
   Search,
   Settings2,
-  SlidersHorizontal,
-  Sparkles,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
@@ -132,50 +128,6 @@ function PaletteContent() {
     if (branch) {
       const ancestors = branchAncestors(branches, branch.id)
       items.push(
-        {
-          id: 'panel-memory',
-          label: 'Open memory inspector',
-          section: 'Current branch',
-          icon: Brain,
-          keywords: 'memories proposals personalization',
-          run: runAction(() => {
-            useUiStore.getState().setInspectorTab('memory')
-            useUiStore.getState().setInspectorOpen(true)
-          }),
-        },
-        {
-          id: 'panel-why',
-          label: 'Open Why this answer',
-          section: 'Current branch',
-          icon: Sparkles,
-          keywords: 'trace reasoning retrieval context',
-          run: runAction(() => {
-            useUiStore.getState().setInspectorTab('why')
-            useUiStore.getState().setInspectorOpen(true)
-          }),
-        },
-        {
-          id: 'panel-graph',
-          label: 'Open branch graph',
-          section: 'Current branch',
-          icon: Network,
-          keywords: 'map tree fork merge sync',
-          run: runAction(() => {
-            useUiStore.getState().setInspectorTab('graph')
-            useUiStore.getState().setInspectorOpen(true)
-          }),
-        },
-        {
-          id: 'panel-settings',
-          label: 'Open branch settings',
-          section: 'Current branch',
-          icon: SlidersHorizontal,
-          keywords: 'persona model thinking memory mode',
-          run: runAction(() => {
-            useUiStore.getState().setInspectorTab('settings')
-            useUiStore.getState().setInspectorOpen(true)
-          }),
-        },
         {
           id: 'fork-current',
           label: 'Fork this branch',

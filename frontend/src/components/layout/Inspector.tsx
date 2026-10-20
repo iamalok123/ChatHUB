@@ -1,5 +1,4 @@
 import {
-  Brain,
   GitBranch,
   Lightbulb,
   LoaderCircle,
@@ -20,7 +19,6 @@ import {
   useWorkspaceStore,
 } from '../../store/workspace'
 import { BranchAdminPanel } from '../inspector/BranchAdminPanel'
-import { MemoryPanel } from '../inspector/MemoryPanel'
 import { PersonalizationPanel } from '../inspector/PersonalizationPanel'
 import { TracePanel } from '../inspector/TracePanel'
 import { IconButton } from '../ui/IconButton'
@@ -31,8 +29,7 @@ const BranchGraph = lazy(() =>
   })),
 )
 
-const tabs: Array<{ id: InspectorTab; label: string; icon: typeof Brain }> = [
-  { id: 'memory', label: 'Memory', icon: Brain },
+const tabs: Array<{ id: InspectorTab; label: string; icon: typeof Lightbulb }> = [
   { id: 'why', label: 'Why', icon: Lightbulb },
   { id: 'graph', label: 'Graph', icon: Network },
   { id: 'settings', label: 'Settings', icon: SlidersHorizontal },
@@ -42,7 +39,7 @@ function GraphPanel({ branch }: { branch: Branch }) {
   return (
     <Suspense
       fallback={
-        <div className="grid h-[300px] place-items-center rounded-xl border border-border bg-subtle/35 text-muted">
+        <div className="grid h-75 place-items-center rounded-xl border border-border bg-subtle/35 text-muted">
           <div className="flex items-center gap-2 text-[11px]">
             <LoaderCircle size={15} className="animate-spin" aria-hidden />
             Loading the branch graph…
@@ -102,12 +99,12 @@ export function Inspector({ drawer = false }: { drawer?: boolean }) {
       className={cn(
         'flex h-full min-h-0 flex-col bg-surface',
         drawer
-          ? 'fixed inset-y-0 right-0 z-50 w-[340px] max-w-[90vw] animate-fade-in border-l border-border shadow-float'
-          : 'w-[340px] shrink-0 border-l border-border',
+          ? 'fixed inset-y-0 right-0 z-50 w-85 max-w-[90vw] animate-fade-in border-l border-border shadow-float'
+          : 'w-85 shrink-0 border-l border-border',
       )}
       aria-label="Branch inspector"
     >
-      <div className="flex h-[58px] shrink-0 items-center justify-between border-b border-border px-4">
+      <div className="flex h-14.5 shrink-0 items-center justify-between border-b border-border px-4">
         <div className="flex items-baseline gap-2">
           <span className="text-xs font-semibold text-ink">Inspector</span>
           <span className="text-[10px] text-muted">{branch.name}</span>
@@ -122,7 +119,7 @@ export function Inspector({ drawer = false }: { drawer?: boolean }) {
       <div
         role="tablist"
         aria-label="Inspector sections"
-        className="grid shrink-0 grid-cols-4 gap-0.5 border-b border-border p-1.5"
+        className="grid shrink-0 grid-cols-3 gap-0.5 border-b border-border p-1.5"
       >
         {tabs.map((item) => {
           const Icon = item.icon
@@ -156,7 +153,6 @@ export function Inspector({ drawer = false }: { drawer?: boolean }) {
         aria-labelledby={`inspector-tab-${tab}`}
         className="min-h-0 flex-1 overflow-y-auto p-3"
       >
-        {tab === 'memory' && <MemoryPanel key={branch.id} branch={branch} />}
         {tab === 'why' && (
           <TracePanel
             key={`${branch.id}:${traceTarget?.commitId ?? 'none'}`}

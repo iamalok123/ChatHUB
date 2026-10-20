@@ -138,7 +138,7 @@ beforeEach(() => {
     theme: 'system',
     sidebarOpen: false,
     inspectorOpen: true,
-    inspectorTab: 'memory',
+    inspectorTab: 'why',
     settingsOpen: false,
     newSpaceOpen: false,
     toasts: [],

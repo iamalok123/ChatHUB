@@ -1,5 +1,4 @@
 import {
-  ArrowUpRight,
   Check,
   ChevronDown,
   Circle,
@@ -56,12 +55,11 @@ export function ReasoningPill({
   usage,
   streaming = false,
   failed = false,
-  onOpenTrace,
 }: ReasoningPillProps) {
   const [open, setOpen] = useState(false)
   const panelId = useId()
   const totalTokens = usage?.total_token_count
-  const hasDetails = Boolean(thinking || steps.length > 0 || onOpenTrace)
+  const hasDetails = Boolean(thinking || steps.length > 0)
 
   return (
     <div className="mb-2">
@@ -164,16 +162,6 @@ export function ReasoningPill({
               <span className="text-[9px] text-muted">
                 {formatTokens(totalTokens)} tokens
               </span>
-            )}
-            {onOpenTrace && (
-              <button
-                type="button"
-                onClick={onOpenTrace}
-                className="ml-auto inline-flex items-center gap-1 text-[10px] font-medium text-accent-ink hover:underline"
-              >
-                Open full trace
-                <ArrowUpRight size={10} aria-hidden />
-              </button>
             )}
           </div>
         </div>

@@ -620,14 +620,16 @@ async def seed_demo_space(
             (space["id"], INDEXEDDB_MEMORY[0]),
         ).fetchone()
         assert index_memory is not None
+        main_head_row = conn.execute(
+            "SELECT head_commit_id FROM branches WHERE id = ?", (main["id"],)
+        ).fetchone()
+        main_head_id = main_head_row["head_commit_id"] if main_head_row else None
         merge_commit = commits_repo.create(
             conn,
             space_id=space["id"],
             branch_id=main["id"],
             role="merge",
-            parent_id=conn.execute(
-                "SELECT head_commit_id FROM branches WHERE id = ?", (main["id"],)
-            ).fetchone()[0],
+            parent_id=main_head_id,
             content=(
                 "Merged the IndexedDB offline-reading preference from "
                 "typescript-examples so future branches can reuse it."

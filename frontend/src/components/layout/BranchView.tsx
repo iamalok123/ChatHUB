@@ -59,14 +59,6 @@ function BranchChat({ branch, space }: { branch: Branch; space: Space }) {
   const hasAncestor = branchAncestors(branches, branch.id).length > 0
   const hasContent = Boolean(messages && messages.length > 0) || Boolean(live)
   const canWrite = !branch.archived && !loading && messages !== null
-  const openTrace = useCallback(
-    (commitId: string) => {
-      useTraceStore.getState().selectTrace({ branchId: branch.id, commitId })
-      useUiStore.getState().setInspectorTab('why')
-      useUiStore.getState().setInspectorOpen(true)
-    },
-    [branch.id],
-  )
   const forkFromMessage = useCallback(
     (commitId: string) => openFork({ branchId: branch.id, commitId }),
     [branch.id, openFork],
@@ -74,9 +66,6 @@ function BranchChat({ branch, space }: { branch: Branch; space: Space }) {
 
   useEffect(() => {
     useTraceStore.getState().clearTrace()
-    if (useUiStore.getState().inspectorTab === 'why') {
-      useUiStore.getState().setInspectorTab('memory')
-    }
     useUiStore.getState().clearFocusedCommit()
   }, [branch.id])
 
@@ -294,7 +283,6 @@ function BranchChat({ branch, space }: { branch: Branch; space: Space }) {
                   key={message.id}
                   message={message}
                   color={branchColors.get(message.branch_id)}
-                  onOpenTrace={openTrace}
                   onFork={forkFromMessage}
                 />
               ))}

@@ -54,7 +54,7 @@ def create(
     model: str | None = None,
     thinking_level: str = "medium",
     top_k: int = 6,
-    memory_mode: str = "review",
+    memory_mode: str = "auto",
     color: str | None = None,
     archived: bool = False,
     ephemeral: bool = False,
@@ -63,9 +63,10 @@ def create(
     anchor_id = new_id()
     now = utc_now()
     if color is None:
-        count = conn.execute(
-            "SELECT COUNT(*) FROM branches WHERE space_id = ?", (space_id,)
-        ).fetchone()[0]
+        count_row = conn.execute(
+            "SELECT COUNT(*) as cnt FROM branches WHERE space_id = ?", (space_id,)
+        ).fetchone()
+        count = count_row["cnt"] if count_row and "cnt" in count_row else (count_row[0] if count_row else 0)
         color = BRANCH_COLORS[int(count) % len(BRANCH_COLORS)]
 
     with conn:
@@ -92,7 +93,7 @@ def create(
                 memory_mode,
                 color,
                 int(archived),
-                1 if ephemeral else 0,
+                bool(ephemeral),
                 now,
             ),
         )

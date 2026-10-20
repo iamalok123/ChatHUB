@@ -67,6 +67,7 @@ class Settings:
     history_token_budget: int = 3000
     memory_token_budget: int = 800
     extraction_max_candidates: int = 5
+    default_memory_mode: str = "auto"
     custom_allowed_origins: tuple[str, ...] = ()
     custom_allowed_hosts: tuple[str, ...] = ()
     environment: str = "development"
@@ -115,6 +116,7 @@ class Settings:
             history_token_budget=_env_int("HISTORY_TOKEN_BUDGET", 3000),
             memory_token_budget=_env_int("MEMORY_TOKEN_BUDGET", 800),
             extraction_max_candidates=_env_int("EXTRACTION_MAX_CANDIDATES", 5),
+            default_memory_mode=os.getenv("DEFAULT_MEMORY_MODE", "auto").strip().lower(),
             custom_allowed_origins=custom_origins,
             custom_allowed_hosts=custom_hosts,
             environment=(

@@ -1,7 +1,6 @@
 import { useEffect } from 'react'
 
 import { useUiStore } from '../../store/ui'
-import { selectCurrentBranch, useWorkspaceStore } from '../../store/workspace'
 
 function hasOpenDialog(): boolean {
   return document.querySelector('[role="dialog"][aria-modal="true"]') !== null
@@ -13,7 +12,7 @@ export function GlobalShortcuts() {
       if (event.defaultPrevented || event.altKey) return
       if (!event.metaKey && !event.ctrlKey) return
       const key = event.key.toLowerCase()
-      if (key !== 'k' && key !== 'b' && key !== '.') return
+      if (key !== 'k' && key !== 'b') return
       const ui = useUiStore.getState()
 
       if (key === 'k') {
@@ -34,12 +33,6 @@ export function GlobalShortcuts() {
           ui.setSidebarOpen(!ui.sidebarOpen)
         }
         return
-      }
-
-      const branch = selectCurrentBranch(useWorkspaceStore.getState())
-      if (key === '.' && branch) {
-        event.preventDefault()
-        ui.setInspectorOpen(!ui.inspectorOpen)
       }
     }
 

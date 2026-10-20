@@ -35,9 +35,12 @@ def create_space(
     payload: SpaceCreate,
     user: CurrentUser,
     conn: DbConn,
+    request: Request,
 ) -> SpaceOut:
+    settings = getattr(request.app.state, "settings", None)
+    default_mode = getattr(settings, "default_memory_mode", "auto") if settings else "auto"
     space, _branch = spaces_repo.create_with_main(
-        conn, user.id, payload.name, payload.description, payload.profile
+        conn, user.id, payload.name, payload.description, payload.profile, memory_mode=default_mode
     )
     return SpaceOut(**spaces_repo.to_dict(space))
 

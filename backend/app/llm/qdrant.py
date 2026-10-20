@@ -9,6 +9,7 @@ from qdrant_client.models import (
     Distance,
     FieldCondition,
     Filter,
+    HasIdCondition,
     MatchAny,
     PointStruct,
     VectorParams,
@@ -49,14 +50,23 @@ class QdrantStore:
     def _ensure_collection(self) -> None:
         try:
             client = self._client
-            if client and not client.collection_exists(self.collection):
-                client.create_collection(
-                    collection_name=self.collection,
-                    vectors_config=VectorParams(size=self.dim, distance=Distance.COSINE),
-                )
-                logger.info(
-                    "Initialized Qdrant collection '%s' (dim=%d)", self.collection, self.dim
-                )
+            if client:
+                if not client.collection_exists(self.collection):
+                    client.create_collection(
+                        collection_name=self.collection,
+                        vectors_config=VectorParams(size=self.dim, distance=Distance.COSINE),
+                    )
+                    logger.info(
+                        "Initialized Qdrant collection '%s' (dim=%d)", self.collection, self.dim
+                    )
+                try:
+                    client.create_payload_index(
+                        collection_name=self.collection,
+                        field_name="memory_id",
+                        field_schema="keyword",
+                    )
+                except Exception:
+                    pass
         except Exception as exc:
             logger.warning("Could not initialize Qdrant collection '%s': %s", self.collection, exc)
 
@@ -108,7 +118,7 @@ class QdrantStore:
                 collection_name=self.collection,
                 query=vec,
                 query_filter=Filter(
-                    must=[FieldCondition(key="memory_id", match=MatchAny(any=allowed_memory_ids))]
+                    must=[HasIdCondition(has_id=allowed_memory_ids)]
                 ),
                 limit=limit,
             )

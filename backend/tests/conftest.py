@@ -21,6 +21,7 @@ def settings(tmp_path: Path) -> Settings:
         gemini_api_key="",
         allow_signup=True,
         cookie_secure=False,
+        default_memory_mode="review",
     )
 
 

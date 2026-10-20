@@ -65,7 +65,7 @@ beforeEach(() => {
     sidebarOpen: false,
     sidebarCollapsed: false,
     inspectorOpen: true,
-    inspectorTab: 'memory',
+    inspectorTab: 'why',
     settingsOpen: false,
     newSpaceOpen: false,
     paletteOpen: false,
@@ -106,7 +106,7 @@ it('opens with the keyboard, filters branches, and switches branch', async () =>
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
 })
 
-it('toggles the sidebar and inspector with global shortcuts', async () => {
+it('toggles the sidebar with global shortcuts', async () => {
   const user = userEvent.setup()
   render(<GlobalShortcuts />)
 
@@ -115,7 +115,4 @@ it('toggles the sidebar and inspector with global shortcuts', async () => {
 
   await user.keyboard('{Control>}b{/Control}')
   expect(useUiStore.getState().sidebarCollapsed).toBe(false)
-
-  await user.keyboard('{Control>}.{/Control}')
-  expect(useUiStore.getState().inspectorOpen).toBe(false)
 })

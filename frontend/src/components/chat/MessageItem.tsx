@@ -1,4 +1,4 @@
-import { Bot, Check, Copy, GitFork, Lightbulb, TriangleAlert } from 'lucide-react'
+import { Bot, Check, Copy, GitFork, TriangleAlert } from 'lucide-react'
 import { memo, useState } from 'react'
 import type { ReactNode } from 'react'
 
@@ -14,7 +14,7 @@ import { liveDuration, liveMemoryCount } from './types'
 type MessageItemProps = {
   message: Message
   color?: string | null
-  onOpenTrace: (commitId: string) => void
+  onOpenTrace?: (commitId: string) => void
   onFork?: (commitId: string) => void
 }
 
@@ -42,15 +42,9 @@ function ActionButton({
 
 function MessageActions({
   content,
-  commitId,
-  assistant,
-  onOpenTrace,
   onFork,
 }: {
   content: string
-  commitId: string
-  assistant: boolean
-  onOpenTrace: (commitId: string) => void
   onFork?: () => void
 }) {
   const [copied, setCopied] = useState(false)
@@ -71,11 +65,6 @@ function MessageActions({
           <GitFork size={13} aria-hidden />
         </ActionButton>
       )}
-      {assistant && (
-        <ActionButton label="Why this answer" onClick={() => onOpenTrace(commitId)}>
-          <Lightbulb size={13} aria-hidden />
-        </ActionButton>
-      )}
     </div>
   )
 }
@@ -83,7 +72,6 @@ function MessageActions({
 export const MessageItem = memo(function MessageItem({
   message,
   color,
-  onOpenTrace,
   onFork,
 }: MessageItemProps) {
   const inherited = message.is_inherited
@@ -115,9 +103,6 @@ export const MessageItem = memo(function MessageItem({
         </div>
         <MessageActions
           content={message.content}
-          commitId={message.id}
-          assistant={false}
-          onOpenTrace={onOpenTrace}
           onFork={onFork ? () => onFork(message.id) : undefined}
         />
       </article>
@@ -157,7 +142,6 @@ export const MessageItem = memo(function MessageItem({
             memoryCount={summary.memory_count}
             usage={summary.usage}
             failed={failed}
-            onOpenTrace={() => onOpenTrace(message.id)}
           />
         )}
 
@@ -171,9 +155,6 @@ export const MessageItem = memo(function MessageItem({
 
         <MessageActions
           content={message.content}
-          commitId={message.id}
-          assistant
-          onOpenTrace={onOpenTrace}
           onFork={onFork ? () => onFork(message.id) : undefined}
         />
       </div>

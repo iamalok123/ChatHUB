@@ -8,7 +8,7 @@ import {
   ShieldCheck,
   Sparkles,
 } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import { errorMessage } from '../../api/client'
 import { useMediaQuery } from '../../lib/useMediaQuery'
@@ -23,7 +23,6 @@ import { BranchView } from './BranchView'
 import { CommandPalette } from './CommandPalette'
 import { GlobalShortcuts } from './GlobalShortcuts'
 import { HealthBanner } from './HealthBanner'
-import { Inspector } from './Inspector'
 import { OperationDialogs } from '../operations/OperationDialogs'
 import { NewSpaceDialog } from './NewSpaceDialog'
 import { SettingsDialog } from './SettingsDialog'
@@ -70,7 +69,7 @@ function EmptyWorkspace() {
   }
 
   return (
-    <div className="mx-auto flex min-h-full w-full max-w-[760px] flex-col justify-center px-6 py-12 sm:px-8">
+    <div className="mx-auto flex min-h-full w-full max-w-190 flex-col justify-center px-6 py-12 sm:px-8">
       <div className="animate-fade-in">
         <span className="mb-5 grid size-12 place-items-center rounded-2xl border border-border bg-surface text-accent shadow-soft">
           <Sparkles size={21} aria-hidden />
@@ -152,7 +151,7 @@ function WorkspaceError() {
 
 function CenterSkeleton() {
   return (
-    <div className="mx-auto w-full max-w-[760px] animate-pulse px-6 py-10 sm:px-8">
+    <div className="mx-auto w-full max-w-190 animate-pulse px-6 py-10 sm:px-8">
       <div className="flex items-center gap-3">
         <div className="size-10 rounded-xl bg-hover" />
         <div className="space-y-2">
@@ -195,31 +194,16 @@ function WorkspaceCenter() {
 
 export function AppShell() {
   const loadSpaces = useWorkspaceStore((state) => state.loadSpaces)
-  const branch = useWorkspaceStore(selectCurrentBranch)
   const isMobile = !useMediaQuery('(min-width: 900px)')
-  const isWide = useMediaQuery('(min-width: 1280px)')
   const sidebarOpen = useUiStore((state) => state.sidebarOpen)
   const sidebarCollapsed = useUiStore((state) => state.sidebarCollapsed)
-  const inspectorOpen = useUiStore((state) => state.inspectorOpen)
   const setSidebarOpen = useUiStore((state) => state.setSidebarOpen)
-  const setInspectorOpen = useUiStore((state) => state.setInspectorOpen)
-  const initialized = useRef(false)
 
   useEffect(() => {
     void loadSpaces()
   }, [loadSpaces])
 
-  useEffect(() => {
-    if (initialized.current) return
-    initialized.current = true
-    if (!isWide) {
-      setInspectorOpen(false)
-    }
-  }, [isWide, setInspectorOpen])
-
   const sidebarVisible = isMobile ? sidebarOpen : !sidebarCollapsed
-  const inspectorVisible = Boolean(branch) && inspectorOpen
-  const inspectorAsDrawer = !isWide && inspectorVisible
 
   return (
     <div className="flex h-svh min-h-0 overflow-hidden bg-bg text-ink">
@@ -249,19 +233,6 @@ export function AppShell() {
           <main className="min-h-0 min-w-0 flex-1 overflow-y-auto" id="main-content">
             <WorkspaceCenter />
           </main>
-
-          {isWide && inspectorVisible && branch && <Inspector />}
-          {inspectorAsDrawer && (
-            <>
-              <button
-                type="button"
-                aria-label="Close inspector"
-                className="fixed inset-0 z-40 animate-fade-in bg-overlay backdrop-blur-[1px]"
-                onClick={() => setInspectorOpen(false)}
-              />
-              <Inspector drawer />
-            </>
-          )}
         </div>
       </div>
 
