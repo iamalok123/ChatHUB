@@ -325,11 +325,7 @@ function BranchChat({ branch, space }: { branch: Branch; space: Space }) {
                   resizeComposer()
                 }}
                 onKeyDown={onComposerKeyDown}
-                placeholder={
-                  branch.archived
-                    ? 'This branch is archived.'
-                    : 'Ask anything. This branch will remember what matters.'
-                }
+                placeholder={branch.archived ? 'This branch is archived.' : 'Ask anything...'}
                 aria-label="Message this branch"
                 className="max-h-40 min-h-9 flex-1 resize-none bg-transparent px-1 py-2 text-sm leading-relaxed text-ink placeholder:text-muted/70 focus:outline-none disabled:cursor-not-allowed"
               />

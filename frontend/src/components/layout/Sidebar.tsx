@@ -5,6 +5,7 @@ import {
   ChevronDown,
   GitBranch,
   LogOut,
+  MoreHorizontal,
   Plus,
   Search,
   Settings2,
@@ -311,12 +312,31 @@ export function Sidebar({ mobile, onNavigate }: SidebarProps) {
   const selectSpace = useWorkspaceStore((state) => state.selectSpace)
   const selectBranch = useWorkspaceStore((state) => state.selectBranch)
   const user = useAuthStore((state) => state.user)
-  const health = useAuthStore((state) => state.health)
   const logout = useAuthStore((state) => state.logout)
   const setSidebarOpen = useUiStore((state) => state.setSidebarOpen)
   const setSettingsOpen = useUiStore((state) => state.setSettingsOpen)
   const setNewSpaceOpen = useUiStore((state) => state.setNewSpaceOpen)
   const [filter, setFilter] = useState('')
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const userMenuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!userMenuOpen) return
+    const onPointerDown = (event: PointerEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setUserMenuOpen(false)
+      }
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setUserMenuOpen(false)
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [userMenuOpen])
 
   const chooseBranch = (branchId: string) => {
     selectBranch(branchId)
@@ -326,10 +346,6 @@ export function Sidebar({ mobile, onNavigate }: SidebarProps) {
   const chooseSpace = (next: Space) => {
     void selectSpace(next.id).finally(onNavigate)
   }
-
-  const providerReady = health?.gemini.configured && health.gemini.reachable !== false
-  const providerLabel =
-    health?.llm_mode === 'mock' ? 'Mock AI' : providerReady ? 'Gemini AI' : 'AI offline'
 
   return (
     <aside
@@ -420,39 +436,55 @@ export function Sidebar({ mobile, onNavigate }: SidebarProps) {
 
       {user && (
         <div className="shrink-0 border-t border-border px-3 py-3">
-          <div className="flex items-center gap-2.5">
-            <span className="grid size-8 shrink-0 place-items-center rounded-full bg-accent-soft text-[10px] font-semibold text-accent-ink">
-              {initials(user.display_name)}
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-xs font-medium text-ink">{user.display_name}</p>
-              <p className="truncate text-[10px] text-muted">{user.email}</p>
+          <div className="flex items-center justify-between gap-2.5">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <span className="grid size-8 shrink-0 place-items-center rounded-full bg-accent-soft text-[10px] font-semibold text-accent-ink">
+                {initials(user.display_name)}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs font-medium text-ink">{user.display_name}</p>
+                <p className="truncate text-[10px] text-muted">{user.email}</p>
+              </div>
             </div>
-          </div>
-          <div className="mt-2.5 flex items-center justify-between">
-            <span className="flex items-center gap-1.5 text-[10px] text-muted">
-              <span
-                className={cn(
-                  'size-1.5 rounded-full',
-                  providerReady ? 'bg-success' : health?.llm_mode === 'mock' ? 'bg-warning' : 'bg-danger',
-                )}
-              />
-              {providerLabel}
-            </span>
-            <div className="flex items-center gap-0.5">
+
+            <div ref={userMenuRef} className="relative shrink-0">
               <IconButton
-                label="Settings"
-                onClick={() => {
-                  setSettingsOpen(true)
-                  if (mobile) setSidebarOpen(false)
-                }}
+                label="More options"
+                aria-haspopup="menu"
+                aria-expanded={userMenuOpen}
+                onClick={() => setUserMenuOpen((value) => !value)}
               >
-                <Settings2 size={15} aria-hidden />
+                <MoreHorizontal size={16} aria-hidden />
               </IconButton>
-              <ThemeToggle />
-              <IconButton label="Sign out" onClick={() => void logout()}>
-                <LogOut size={15} aria-hidden />
-              </IconButton>
+
+              {userMenuOpen && (
+                <div
+                  role="menu"
+                  aria-label="User actions"
+                  className="absolute bottom-full right-0 z-40 mb-2 flex items-center gap-1 rounded-xl border border-border bg-surface p-1 shadow-float animate-fade-in"
+                >
+                  <IconButton
+                    label="Settings"
+                    onClick={() => {
+                      setUserMenuOpen(false)
+                      setSettingsOpen(true)
+                      if (mobile) setSidebarOpen(false)
+                    }}
+                  >
+                    <Settings2 size={15} aria-hidden />
+                  </IconButton>
+                  <ThemeToggle />
+                  <IconButton
+                    label="Sign out"
+                    onClick={() => {
+                      setUserMenuOpen(false)
+                      void logout()
+                    }}
+                  >
+                    <LogOut size={15} aria-hidden />
+                  </IconButton>
+                </div>
+              )}
             </div>
           </div>
         </div>
