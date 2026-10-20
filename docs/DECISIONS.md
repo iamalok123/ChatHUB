@@ -207,3 +207,27 @@ This file records decisions and deviations from the original local-only, Ollama-
 **Reason:** Archiving should hide a branch from active work without destroying its history. Removing the root would leave a space with no canonical lineage, so it is never archivable.
 
 **Consequences:** Forking an archived branch remains allowed for inspection and replay. The UI immediate archive action is reversible from the same menu; Settings uses an inline confirmation and still offers restore.
+
+## D-030: The memory inspector is the single control surface
+
+**Decision:** The Memory inspector loads the effective and excluded sets plus pending proposals, filters them locally by text and kind, and performs all edits through the existing memory and proposal routes. Inherited memories expose branch-local pin, content edit, exclude, and restore actions; only own memories can be deleted. A conflicting proposal offers explicit `Replace old` and `Keep both` choices.
+
+**Reason:** Phase 9 needs memory control without expanding the API surface or duplicating the effective-memory algorithm in the browser. Grouping the already-computed effective list keeps ownership and inheritance rules on the server.
+
+**Consequences:** Inherited edits change content only; kind and importance remain upstream values. Archived branches render the same evidence read-only. The panel reloads when the branch message or memory count changes, so proposals extracted after a reply appear without a manual refresh.
+
+## D-031: Personalization uses a small known profile vocabulary
+
+**Decision:** The profile editor exposes `about`, `tone`, `language`, and `expertise` while preserving unknown profile keys. Branch Settings edits persona, system prompt, thinking level, retrieval strength, and memory mode; it shows the space-default model instead of offering an invalid model chooser.
+
+**Reason:** The backend accepts arbitrary profile JSON, but the context composer and UI need stable labels for the common fields. Restricting model editing to the configured allowlist prevents avoidable 422 errors while keeping advanced prompt control available.
+
+**Consequences:** Clearing a known profile field removes it; clearing all optional fields is allowed. The editor remounts when the space or branch changes instead of synchronizing state in an effect. Profile changes apply to the next reply across the space, while branch voice changes stay on that branch.
+
+## D-032: Provenance jumps are ephemeral browser state
+
+**Decision:** Source links write a `focusedCommitId` to the UI store. The branch view scrolls the matching `data-commit-id`, applies a short highlight, and clears the focus after 1.6 seconds. A source that is not a rendered message produces an explanatory toast. On narrow screens the inspector drawer closes so the highlighted message is visible. The Why panel also shows the retrieval query and always renders a `What changed in memory` section, including an explicit no-change state.
+
+**Reason:** Provenance should be immediate without new API calls, routes, or persisted navigation state. Keep-origin-meaning visible is more useful than showing a stale inspector over the target message.
+
+**Consequences:** Source jumps do not survive reloads and anchor, merge, sync, or checkpoint commits have no message to focus. The Why panel remains a complete explanation even when extraction made no memory change.

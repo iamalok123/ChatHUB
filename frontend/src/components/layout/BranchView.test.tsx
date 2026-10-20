@@ -167,6 +167,7 @@ beforeEach(() => {
     inspectorTab: 'memory',
     settingsOpen: false,
     newSpaceOpen: false,
+    focusedCommitId: null,
     toasts: [],
   })
   useTraceStore.setState({ target: null })
@@ -174,6 +175,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup()
+  vi.restoreAllMocks()
   vi.unstubAllGlobals()
 })
 
@@ -228,4 +230,24 @@ it('streams a reply, settles the transcript, and opens its trace', async () => {
     commitId: 'a1',
   })
   expect(useUiStore.getState().inspectorTab).toBe('why')
+})
+
+it('scrolls to a memory source message and highlights it', async () => {
+  const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+    const path = String(input)
+    if (path.endsWith('/branches/b1/messages')) return jsonResponse(transcript)
+    return jsonResponse({ error: { code: 'not_found', message: 'Not found' } }, 404)
+  })
+  vi.stubGlobal('fetch', fetchMock)
+  const scrollIntoView = vi.spyOn(Element.prototype, 'scrollIntoView')
+  render(<BranchView />)
+
+  expect(await screen.findByText('Hello')).toBeInTheDocument()
+  const source = document.getElementById('message-a1')
+  expect(source).not.toBeNull()
+  useUiStore.getState().focusCommit('a1')
+
+  await waitFor(() => expect(scrollIntoView).toHaveBeenCalled())
+  expect(source).toHaveClass('memory-source-flash')
+  useUiStore.getState().clearFocusedCommit()
 })

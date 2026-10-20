@@ -43,6 +43,7 @@ function BranchChat({ branch, space }: { branch: Branch; space: Space }) {
 
   const openFork = useOperationsStore((state) => state.openFork)
   const openMerge = useOperationsStore((state) => state.openMerge)
+  const focusedCommitId = useUiStore((state) => state.focusedCommitId)
   const [draft, setDraft] = useState('')
   const [stick, setStick] = useState(true)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -55,7 +56,40 @@ function BranchChat({ branch, space }: { branch: Branch; space: Space }) {
   useEffect(() => {
     useTraceStore.getState().clearTrace()
     useUiStore.getState().setInspectorTab('memory')
+    useUiStore.getState().clearFocusedCommit()
   }, [branch.id])
+
+  useEffect(() => {
+    if (!focusedCommitId || messages === null) return
+    const element = scrollRef.current?.querySelector<HTMLElement>(
+      `[data-commit-id="${focusedCommitId}"]`,
+    )
+    if (!element) {
+      useUiStore
+        .getState()
+        .pushToast(
+          'info',
+          'Source is not a message',
+          'This memory came from a branch event or checkpoint.',
+        )
+      useUiStore.getState().clearFocusedCommit()
+      return
+    }
+    setStick(false)
+    if (!window.matchMedia('(min-width: 1280px)').matches) {
+      useUiStore.getState().setInspectorOpen(false)
+    }
+    element.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    element.classList.add('memory-source-flash')
+    const timer = window.setTimeout(() => {
+      element.classList.remove('memory-source-flash')
+      useUiStore.getState().clearFocusedCommit()
+    }, 1600)
+    return () => {
+      window.clearTimeout(timer)
+      element.classList.remove('memory-source-flash')
+    }
+  }, [focusedCommitId, messages])
 
   useEffect(() => {
     if (!stick) return

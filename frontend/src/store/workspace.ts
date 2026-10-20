@@ -50,6 +50,7 @@ type WorkspaceState = {
   selectBranch: (branchId: string) => void
   refreshBranch: (branchId: string) => Promise<void>
   upsertBranch: (branch: Branch) => void
+  upsertSpace: (space: Space) => void
   addAndSelectBranch: (branch: Branch) => void
   createSpace: (name: string, description: string) => Promise<Space>
   importSpace: (document: unknown) => Promise<ImportResult>
@@ -186,6 +187,14 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => ({
           : [...state.branches, branch],
       }
     })
+  },
+
+  upsertSpace: (space) => {
+    set((state) => ({
+      spaces: state.spaces.some((item) => item.id === space.id)
+        ? state.spaces.map((item) => (item.id === space.id ? space : item))
+        : [...state.spaces, space],
+    }))
   },
 
   addAndSelectBranch: (branch) => {

@@ -1,4 +1,5 @@
 import {
+  ArrowUpRight,
   Brain,
   ChevronDown,
   GitBranch,
@@ -20,6 +21,7 @@ import type {
 import { cn } from '../../lib/cn'
 import { formatDuration, formatTokens, plural, sentenceCase } from '../../lib/format'
 import type { TraceTarget } from '../../store/trace'
+import { useUiStore } from '../../store/ui'
 import { Spinner } from '../ui/Spinner'
 
 const phaseLabels: Record<string, string> = {
@@ -51,8 +53,9 @@ function Stat({ label, value }: { label: string; value: string }) {
 }
 
 function MemoryRow({ memory, ranked = false }: { memory: TraceMemory; ranked?: boolean }) {
-  const similarity = memory.similarity === null ? '—' : memory.similarity.toFixed(2)
-  const score = memory.score === null ? '—' : memory.score.toFixed(2)
+  const focusCommit = useUiStore((state) => state.focusCommit)
+  const similarity = memory.similarity === null ? '-' : memory.similarity.toFixed(2)
+  const score = memory.score === null ? '-' : memory.score.toFixed(2)
 
   return (
     <div className="rounded-lg border border-border bg-surface p-2.5">
@@ -61,11 +64,24 @@ function MemoryRow({ memory, ranked = false }: { memory: TraceMemory; ranked?: b
           {memory.kind}
         </span>
         {memory.pinned && <Pin size={10} className="mt-0.5 text-accent" aria-hidden />}
-        {memory.inherited && (
-          <span className="ml-auto truncate text-[8px] text-muted">
-            from {memory.origin_branch_name}
-          </span>
-        )}
+        <span className="ml-auto flex min-w-0 items-center gap-2">
+          {memory.inherited && (
+            <span className="truncate text-[8px] text-muted">
+              from {memory.origin_branch_name}
+            </span>
+          )}
+          {memory.source_commit_id && (
+            <button
+              type="button"
+              onClick={() => focusCommit(memory.source_commit_id as string)}
+              title="Jump to the source message"
+              className="inline-flex shrink-0 items-center gap-0.5 text-[8px] font-medium text-muted hover:text-accent-ink"
+            >
+              <ArrowUpRight size={9} aria-hidden />
+              source
+            </button>
+          )}
+        </span>
       </div>
       <p className="mt-1.5 text-[10px] leading-relaxed text-ink">{memory.content}</p>
       {ranked && (
@@ -87,7 +103,7 @@ function MemoryRow({ memory, ranked = false }: { memory: TraceMemory; ranked?: b
       {!ranked && (
         <p className="mt-1 text-[8px] text-muted">
           {memory.reason}
-          {memory.score !== null ? ` · score ${score}` : ''}
+          {memory.score !== null ? ` - score ${score}` : ''}
         </p>
       )}
     </div>
@@ -233,6 +249,30 @@ function TraceBody({ trace }: { trace: AssistantTrace }) {
 
       <ContextBar trace={trace} />
 
+      <details className="group rounded-xl border border-border bg-surface">
+        <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2 text-[10px] text-muted">
+          <ChevronDown
+            size={11}
+            className="transition-transform group-open:rotate-180"
+            aria-hidden
+          />
+          Retrieval query
+          <span className="ml-auto text-[8px]">
+            {formatDuration(trace.retrieval.duration_ms)} / top {trace.retrieval.top_k}
+          </span>
+        </summary>
+        <div className="border-t border-border p-3">
+          <p className="rounded-lg bg-subtle/70 px-2.5 py-2 font-mono text-[9px] leading-relaxed text-ink">
+            {trace.retrieval.query || 'No retrieval query was recorded.'}
+          </p>
+          <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[8px] text-muted">
+            <span>{trace.retrieval.query_tokens} query tokens</span>
+            <span>{trace.retrieval.used_tokens} memory tokens used</span>
+            <span>{formatDuration(trace.retrieval.duration_ms)}</span>
+          </div>
+        </div>
+      </details>
+
       <div>
         <div className="mb-2 flex items-center justify-between px-0.5">
           <p className="text-[10px] font-medium text-ink">Retrieved memories</p>
@@ -298,9 +338,9 @@ function TraceBody({ trace }: { trace: AssistantTrace }) {
         </details>
       )}
 
-      {operations.length > 0 && (
-        <div className="rounded-xl border border-border bg-surface p-3">
-          <p className="text-[10px] font-medium text-ink">What changed in memory</p>
+      <div className="rounded-xl border border-border bg-surface p-3">
+        <p className="text-[10px] font-medium text-ink">What changed in memory</p>
+        {operations.length > 0 ? (
           <div className="mt-2 space-y-1.5">
             {operations.map((operation, index) => (
               <div
@@ -312,8 +352,12 @@ function TraceBody({ trace }: { trace: AssistantTrace }) {
               </div>
             ))}
           </div>
-        </div>
-      )}
+        ) : (
+          <p className="mt-1.5 text-[9px] leading-relaxed text-muted">
+            No memories were added, updated, or proposed for this reply.
+          </p>
+        )}
+      </div>
 
       {warnings.length > 0 && (
         <div className="rounded-xl border border-warning/20 bg-warning-soft px-3 py-2.5">

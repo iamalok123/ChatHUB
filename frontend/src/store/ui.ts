@@ -61,6 +61,7 @@ type UiState = {
   inspectorTab: InspectorTab
   settingsOpen: boolean
   newSpaceOpen: boolean
+  focusedCommitId: string | null
   toasts: Toast[]
   setTheme: (theme: Theme) => void
   setSidebarOpen: (open: boolean) => void
@@ -68,6 +69,8 @@ type UiState = {
   setInspectorTab: (tab: InspectorTab) => void
   setSettingsOpen: (open: boolean) => void
   setNewSpaceOpen: (open: boolean) => void
+  focusCommit: (commitId: string) => void
+  clearFocusedCommit: () => void
   pushToast: (kind: ToastKind, title: string, description?: string) => string
   dismissToast: (id: string) => void
 }
@@ -79,6 +82,7 @@ export const useUiStore = create<UiState>()((set, get) => ({
   inspectorTab: 'memory',
   settingsOpen: false,
   newSpaceOpen: false,
+  focusedCommitId: null,
   toasts: [],
   setTheme: (theme) => {
     applyTheme(theme)
@@ -89,6 +93,8 @@ export const useUiStore = create<UiState>()((set, get) => ({
   setInspectorTab: (inspectorTab) => set({ inspectorTab }),
   setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
   setNewSpaceOpen: (newSpaceOpen) => set({ newSpaceOpen }),
+  focusCommit: (focusedCommitId) => set({ focusedCommitId }),
+  clearFocusedCommit: () => set({ focusedCommitId: null }),
   pushToast: (kind, title, description) => {
     const id = `toast-${++toastSequence}`
     set((state) => ({ toasts: [...state.toasts, { id, kind, title, description }] }))

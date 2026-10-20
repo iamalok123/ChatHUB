@@ -288,6 +288,21 @@ button:disabled {
   }
 }
 
+@keyframes memory-source-flash {
+  0%,
+  100% {
+    background-color: transparent;
+  }
+  25% {
+    background-color: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  }
+}
+
+.memory-source-flash {
+  border-radius: 1rem;
+  animation: memory-source-flash 1.6s ease-out;
+}
+
 .animate-fade-in {
   animation: fade-in 160ms ease-out both;
 }

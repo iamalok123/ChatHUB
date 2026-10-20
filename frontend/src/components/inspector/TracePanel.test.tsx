@@ -1,7 +1,9 @@
 import { cleanup, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { afterEach, expect, it, vi } from 'vitest'
 
 import type { Branch, TraceResponse } from '../../api/types'
+import { useUiStore } from '../../store/ui'
 import { TracePanel } from './TracePanel'
 
 const branch: Branch = {
@@ -132,6 +134,8 @@ it('renders ranked memories, context, usage, and synthetic reasoning labels', as
     json: async () => traceResponse,
   }))
   vi.stubGlobal('fetch', fetchMock)
+  useUiStore.setState({ focusedCommitId: null })
+  const browser = userEvent.setup()
 
   render(
     <TracePanel
@@ -147,11 +151,15 @@ it('renders ranked memories, context, usage, and synthetic reasoning labels', as
   ).toBeInTheDocument()
   expect(screen.getByText('Prefers short answers.')).toBeInTheDocument()
   expect(screen.getByText('pinned')).toBeInTheDocument()
+  expect(screen.getByText('How should I answer?')).toBeInTheDocument()
   expect(screen.getAllByText('2.1s').length).toBeGreaterThan(0)
   expect(screen.getByText('Context composition')).toBeInTheDocument()
   expect(screen.getByText(/considered but skipped/i)).toBeInTheDocument()
   expect(screen.getByText('Memory auto saved')).toBeInTheDocument()
   expect(screen.getByText(/Prefers examples first/)).toBeInTheDocument()
+
+  await browser.click(screen.getAllByRole('button', { name: /source/i })[0])
+  expect(useUiStore.getState().focusedCommitId).toBe('u0')
 
   const [url] = fetchMock.mock.calls[0]
   expect(url).toBe('/api/branches/b1/messages/a1/trace')

@@ -47,9 +47,13 @@ npm --prefix frontend run dev
 
 - Create an account, sign in, restore a session, update the profile or password, and sign out.
 - Switch between light, dark, and system themes without a flash on reload.
-- Browse spaces and the branch tree, filter branches, inspect inherited messages, and view effective and excluded memories.
+- Browse spaces and the branch tree, filter branches, and inspect inherited messages.
+- Review pending memory proposals, resolve conflicts with replace or keep-both, edit before accepting, reject proposals, and add memories directly.
+- Pin, edit, exclude, and restore memories per branch; inherited memories stay read-only upstream, and archived branches stay read-only everywhere.
+- Edit the space profile (about, tone, language, expertise) and per-branch persona, system prompt, thinking level, memory mode, and retrieval strength.
+- Jump from a memory or Why row to its source message with a temporary highlight.
 - Send messages with `Ctrl/Cmd+Enter`, watch streamed markdown with syntax highlighting, stop an interrupted reply, and revisit the transcript without losing your scroll position.
-- Expand the reasoning pill to see retrieved memories, live steps, thinking or a labelled context summary, and open the full Why trace with retrieval scores and context composition.
+- Expand the reasoning pill to see retrieved memories, live steps, thinking or a labelled context summary, and open the full Why trace with retrieval scores, the retrieval query, context composition, usage, and memory changes.
 - Copy answers and code blocks and identify inherited messages by their origin branch color.
 - Fork from any message, a branch head, or a checkpoint with a three-step memory checklist that keeps, excludes, pins, or unpins inherited memories.
 - Merge selected memories upward into an ancestor with an optional generated summary, and sync memories created upstream after a fork.
@@ -58,7 +62,7 @@ npm --prefix frontend run dev
 - Use the responsive shell: the sidebar is a drawer below 900px and the inspector is a drawer below 1280px.
 - See the mock/live provider state and a privacy explanation in Settings. Mock mode is labelled throughout.
 
-Memory editing is available in the inspector. Graph navigation and the compare view are the next UI phases; their backend operations already exist.
+Graph navigation and the compare view are the next UI phases; their backend operations already exist.
 
 ## Verify
 
@@ -85,3 +89,5 @@ Phases 0-6 establish the toolchain, database, authentication boundary, branch vi
 Phase 7 adds the streaming chat experience: markdown rendering with highlighted code, optimistic sends and interrupted-reply recovery, a reasoning pill with steps and thinking summaries, inherited-message styling, copy actions, sticky auto-scroll, and the full Why inspector with retrieval score breakdowns, context composition, and usage.
 
 Phase 8 adds the branch workflow: a sidebar tree with per-branch actions, lineage breadcrumbs, three-step forks with keep/exclude/pin/unpin choices, upward-only merge with duplicate warnings and generated summaries, a post-fork sync banner and dialog, checkpoints, and branch rename/archive/restore. Archived branches stay inspectable but reject chat and memory writes; the root branch cannot be archived.
+
+Phase 9 makes memory and personalization explicit: the Memory inspector organizes proposals, own, inherited, and excluded memories with branch-local overrides and provenance jumps; Settings edits the space profile and branch voice; the Why inspector adds the retrieval query and always reports what changed in memory. The mock provider cannot exercise persona changes because it does not consume system instructions, so context composition is covered by backend tests instead.

@@ -94,7 +94,11 @@ export function MessageItem({
 
   if (!assistant) {
     return (
-      <article className="group/message flex flex-col items-end">
+      <article
+        id={`message-${message.id}`}
+        data-commit-id={message.id}
+        className="group/message flex flex-col items-end"
+      >
         <div
           className={cn(
             'max-w-[86%] rounded-2xl rounded-br-md border border-border bg-sidebar px-4 py-3 text-sm leading-relaxed text-ink shadow-soft',
@@ -122,6 +126,8 @@ export function MessageItem({
 
   return (
     <article
+      id={`message-${message.id}`}
+      data-commit-id={message.id}
       className={cn(
         'group/message flex gap-3',
         inherited && 'border-l-2 pl-4',
